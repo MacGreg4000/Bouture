@@ -225,6 +225,7 @@ function renderLamp(lamp, dir) {
 
 function renderPlan() {
   const svg = $('plan');
+  hideTooltip(); // les trous survoles vont etre remplaces
   svg.replaceChildren();
   if (!state.tray) return;
 
@@ -306,6 +307,9 @@ function renderPlan() {
       'data-cell': cell.id,
       role: 'button',
       tabindex: '0',
+      // Pas de <title> : il declencherait l'infobulle native du navigateur en
+      // plus de la notre, avec une seconde de retard.
+      'aria-label': describeCell(cell),
     });
 
     const failed = status === 'rate';
@@ -376,8 +380,6 @@ function renderPlan() {
       ),
     );
 
-    const title = el('title', {}, describeCell(cell));
-    group.append(title);
     root.append(group);
   }
 }
@@ -389,6 +391,59 @@ window.addEventListener('resize', () => {
   wasPortrait = isPortrait();
   renderPlan();
 });
+
+/* --------------------------------------------------------------- infobulle */
+
+const canHover = () => window.matchMedia('(hover: hover)').matches;
+
+function tooltipHtml(cell) {
+  const planting = cell.planting;
+  const lines = [`<b>Trou ${cell.position}</b>`];
+
+  if (!planting) {
+    lines.push('<span class="tip__muted">Vide</span>');
+  } else {
+    lines.push(
+      `<span class="tip__variety">
+         <span class="tip__dot" style="background:${planting.varietyColor || 'var(--muted)'}"></span>
+         ${escapeHtml(planting.varietyLabel || 'Sans variété')}
+       </span>`,
+    );
+
+    const age = daysSince(planting.sownOn);
+    const meta = [STATUS_LABELS[planting.status] ?? planting.status];
+    if (planting.sownOn) {
+      meta.push(`semé le ${formatDate(planting.sownOn)}`);
+      if (age !== null) meta.push(age === 0 ? "aujourd'hui" : `${age} j`);
+    }
+    lines.push(`<span class="tip__muted">${escapeHtml(meta.join(' · '))}</span>`);
+
+    if (planting.note) lines.push(`<span class="tip__note">${escapeHtml(planting.note)}</span>`);
+  }
+
+  if (cell.historyCount) {
+    const plural = cell.historyCount > 1 ? 's' : '';
+    lines.push(`<span class="tip__muted">${cell.historyCount} cycle${plural} archivé${plural}</span>`);
+  }
+  return lines.join('');
+}
+
+function moveTooltip(event) {
+  const tip = $('tip');
+  const margin = 12;
+  const { width, height } = tip.getBoundingClientRect();
+  // Par defaut en bas a droite du curseur, bascule si on sort de l'ecran.
+  let x = event.clientX + 16;
+  let y = event.clientY + 16;
+  if (x + width + margin > window.innerWidth) x = event.clientX - width - 16;
+  if (y + height + margin > window.innerHeight) y = event.clientY - height - 16;
+  tip.style.left = `${Math.max(margin, x)}px`;
+  tip.style.top = `${Math.max(margin, y)}px`;
+}
+
+function hideTooltip() {
+  $('tip').hidden = true;
+}
 
 function describeCell(cell) {
   if (!cell.planting) return `Trou ${cell.position} — vide`;
@@ -409,7 +464,9 @@ function renderQuickfill() {
   const variety = state.quickfillVarietyId ? varietyById(state.quickfillVarietyId) : null;
   if (!variety) {
     bar.hidden = true;
-    $('hint').textContent = 'Touche un trou pour renseigner ce que tu y as mis.';
+    $('hint').textContent = canHover()
+      ? 'Survole un trou pour voir son contenu, clique pour le modifier.'
+      : 'Touche un trou pour renseigner ce que tu y as mis.';
     return;
   }
   bar.hidden = false;
@@ -679,6 +736,7 @@ function renderTrayList() {
 /* -------------------------------------------------------------- panneaux */
 
 function openSheet(id) {
+  hideTooltip();
   $(id).hidden = false;
   document.body.style.overflow = 'hidden';
 }
@@ -714,6 +772,32 @@ $('plan').addEventListener('click', (event) => {
   if (state.quickfillVarietyId) applyQuickfill(cell);
   else openCellSheet(cell);
 });
+
+$('plan').addEventListener('pointerover', (event) => {
+  // Souris uniquement : au doigt, un appui ouvre deja la fiche du trou.
+  if (event.pointerType === 'touch' || !canHover()) return;
+  const group = event.target.closest('.hole');
+  if (!group) return;
+  const cell = cellById(Number(group.dataset.cell));
+  if (!cell) return;
+  const tip = $('tip');
+  tip.innerHTML = tooltipHtml(cell);
+  tip.hidden = false;
+  moveTooltip(event);
+});
+
+$('plan').addEventListener('pointermove', (event) => {
+  if (!$('tip').hidden) moveTooltip(event);
+});
+
+$('plan').addEventListener('pointerout', (event) => {
+  // Ne pas masquer quand on passe d'un element a l'autre du meme trou.
+  if (event.relatedTarget?.closest?.('.hole') === event.target.closest('.hole')) return;
+  hideTooltip();
+});
+
+// Filet de securite : re-rendu, defilement ou ouverture d'un panneau.
+window.addEventListener('scroll', hideTooltip, { passive: true });
 
 $('plan').addEventListener('keydown', (event) => {
   if (event.key !== 'Enter' && event.key !== ' ') return;
