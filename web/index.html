@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1f6f3f" />
+    <title>Bac à boutures</title>
+    <!-- Bump ?v= a chaque mise a jour du CSS/JS pour forcer les navigateurs deja ouverts. -->
+    <link rel="stylesheet" href="/styles.css?v=4" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>"
+    />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar__title">
+        <span class="topbar__leaf">🌱</span>
+        <select id="tray-select" aria-label="Bac"></select>
+      </div>
+      <div class="topbar__actions">
+        <button type="button" class="btn btn--ghost" id="btn-tray-menu" title="Gérer les bacs">Bacs</button>
+        <button type="button" class="btn btn--ghost" id="btn-legend" title="Légende">Légende</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="board">
+        <div class="board__stats" id="stats"></div>
+        <div class="board__plan">
+          <svg id="plan" role="img" aria-label="Plan du bac à boutures"></svg>
+        </div>
+        <div class="board__quickfill" id="quickfill" hidden>
+          <span class="quickfill__dot" id="quickfill-dot"></span>
+          <span id="quickfill-label"></span>
+          <button type="button" class="btn btn--small" id="quickfill-stop">Terminer</button>
+        </div>
+        <ul class="statuskey">
+          <li><span class="statuskey__mark statuskey__mark--vide"></span>Vide</li>
+          <li><span class="statuskey__mark statuskey__mark--seme"></span>Semé</li>
+          <li><span class="statuskey__mark statuskey__mark--germe"></span>Germé</li>
+          <li><span class="statuskey__mark statuskey__mark--repique"></span>Repiqué</li>
+          <li><span class="statuskey__mark statuskey__mark--rate"></span>Raté</li>
+        </ul>
+        <p class="board__hint" id="hint">Touche un trou pour renseigner ce que tu y as mis.</p>
+      </section>
+    </main>
+
+    <!-- Fiche d'un trou -->
+    <div class="sheet" id="cell-sheet" hidden>
+      <div class="sheet__backdrop" data-close></div>
+      <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="cell-title">
+        <div class="sheet__grip"></div>
+        <div class="sheet__head">
+          <h2 id="cell-title">Trou</h2>
+          <button type="button" class="btn btn--icon" data-close aria-label="Fermer">✕</button>
+        </div>
+        <form id="cell-form" class="form">
+          <label class="field">
+            <span>Variété</span>
+            <select id="f-variety"></select>
+          </label>
+          <div class="field-row">
+            <label class="field">
+              <span>Date de semis</span>
+              <input type="date" id="f-sown" />
+            </label>
+            <label class="field">
+              <span>Statut</span>
+              <select id="f-status">
+                <option value="seme">Semé</option>
+                <option value="germe">Germé</option>
+                <option value="repique">Repiqué</option>
+                <option value="rate">Raté</option>
+              </select>
+            </label>
+          </div>
+          <p class="field-age" id="f-age"></p>
+          <label class="field">
+            <span>Note</span>
+            <textarea id="f-note" rows="2" placeholder="Fournisseur de graines, observation…"></textarea>
+          </label>
+          <div class="form__actions" id="cell-actions">
+            <button type="submit" class="btn btn--primary">Enregistrer</button>
+            <button type="button" class="btn btn--danger-ghost" id="btn-clear">Vider le trou</button>
+          </div>
+          <div class="field" id="clear-choices" hidden>
+            <span>Fin de cycle — quelle issue ?</span>
+            <div class="chip-row">
+              <button type="button" class="btn btn--small" data-outcome="recolte">Récolté</button>
+              <button type="button" class="btn btn--small" data-outcome="repique">Repiqué</button>
+              <button type="button" class="btn btn--small" data-outcome="rate">Raté</button>
+              <button type="button" class="btn btn--small" data-outcome="abandon">Vidé</button>
+              <button type="button" class="btn btn--small btn--ghost" id="btn-clear-cancel">Annuler</button>
+            </div>
+          </div>
+        </form>
+        <section class="history" id="history"></section>
+      </div>
+    </div>
+
+    <!-- Légende -->
+    <div class="sheet" id="legend-sheet" hidden>
+      <div class="sheet__backdrop" data-close></div>
+      <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="legend-title">
+        <div class="sheet__grip"></div>
+        <div class="sheet__head">
+          <h2 id="legend-title">Légende</h2>
+          <button type="button" class="btn btn--icon" data-close aria-label="Fermer">✕</button>
+        </div>
+        <p class="sheet__hint">
+          Touche une variété pour l'affecter rapidement à plusieurs trous d'affilée.
+        </p>
+        <ul class="legend" id="legend-list"></ul>
+        <form class="legend__add" id="legend-form">
+          <input type="color" id="l-color" value="#2f9e44" aria-label="Couleur" />
+          <input type="text" id="l-name" placeholder="Nouvelle variété" maxlength="80" required />
+          <button type="submit" class="btn btn--primary btn--small">Ajouter</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Bacs -->
+    <div class="sheet" id="tray-sheet" hidden>
+      <div class="sheet__backdrop" data-close></div>
+      <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="tray-title">
+        <div class="sheet__grip"></div>
+        <div class="sheet__head">
+          <h2 id="tray-title">Bacs</h2>
+          <button type="button" class="btn btn--icon" data-close aria-label="Fermer">✕</button>
+        </div>
+        <ul class="trays" id="tray-list"></ul>
+        <form class="form" id="tray-form">
+          <label class="field">
+            <span>Nom du nouveau bac</span>
+            <input type="text" id="t-name" placeholder="Ex. Tour hydroponie" maxlength="80" required />
+          </label>
+          <label class="field">
+            <span>Plan de départ</span>
+            <select id="t-source">
+              <option value="default">Même plan que la machine à boutures</option>
+              <option value="copy">Copier le plan du bac affiché</option>
+              <option value="grid">Grille en quinconce</option>
+            </select>
+          </label>
+          <div class="field-row" id="t-grid-size" hidden>
+            <label class="field">
+              <span>Rangées</span>
+              <input type="number" id="t-rows" value="6" min="1" max="24" />
+            </label>
+            <label class="field">
+              <span>Trous par rangée</span>
+              <input type="number" id="t-cols" value="4" min="2" max="12" />
+            </label>
+          </div>
+          <div class="form__actions">
+            <button type="submit" class="btn btn--primary">Créer le bac</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script type="module" src="/app.js?v=4"></script>
+  </body>
+</html>
