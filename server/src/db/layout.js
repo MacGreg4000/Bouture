@@ -116,6 +116,23 @@ export const VARIETIES = [
 ];
 
 /**
+ * Genere les emplacements d'une tour d'aquaponie : `tiers` etages empiles,
+ * chacun portant `potsPerTier` pots repartis tout autour de la colonne.
+ * Un etage sur deux est decale d'un demi-pas (c'est le cote a l'affichage qui
+ * applique ce decalage, ici on ne stocke que l'etage et l'index du pot).
+ * L'etage 1 est celui du haut.
+ */
+export function buildTower(tiers, potsPerTier) {
+  const cells = [];
+  for (let tier = 1; tier <= tiers; tier += 1) {
+    for (let slot = 0; slot < potsPerTier; slot += 1) {
+      cells.push({ tier, slot });
+    }
+  }
+  return { cells, tower: { tiers, potsPerTier } };
+}
+
+/**
  * Genere un plan en quinconce regulier pour un nouveau bac cree depuis l'interface.
  */
 export function buildGrid(rows, cols) {

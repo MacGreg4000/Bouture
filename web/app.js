@@ -31,7 +31,15 @@ const state = {
   holeRadius: 7.5,
   selectedCellId: null,
   quickfillVarietyId: null,
+  towerAngle: 0,
 };
+
+/** « trou » pour un bac à plat, « pot » pour une tour. */
+const cellNoun = () => (state.tray?.kind === 'tower' ? 'pot' : 'trou');
+
+/** « Trou 12 » pour un bac à plat, « Étage 3 · pot 2 » pour une tour. */
+const cellLabel = (cell) =>
+  cell.tier ? `Étage ${cell.tier} · pot ${cell.slot + 1}` : `Trou ${cell.position}`;
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, attrs = {}, children = []) => {
@@ -150,8 +158,9 @@ function renderStats() {
     counters.occupied += 1;
     if (cell.planting.status in counters) counters[cell.planting.status] += 1;
   }
+  const noun = state.tray?.kind === 'tower' ? 'pots occupés' : 'trous occupés';
   const chips = [
-    `<b>${counters.occupied}</b> / ${counters.total} trous occupés`,
+    `<b>${counters.occupied}</b> / ${counters.total} ${noun}`,
     `<b>${counters.germe}</b> germés`,
     `<b>${counters.repique}</b> repiqués`,
     `<b>${counters.rate}</b> ratés`,
@@ -225,10 +234,18 @@ function renderLamp(lamp, dir) {
 
 function renderPlan() {
   const svg = $('plan');
-  hideTooltip(); // les trous survoles vont etre remplaces
+  hideTooltip(); // les emplacements survoles vont etre remplaces
   svg.replaceChildren();
   if (!state.tray) return;
 
+  const tower = state.tray.kind === 'tower';
+  svg.classList.toggle('plan--tower', tower);
+  $('rotator').hidden = !tower;
+  if (tower) renderTower(svg);
+  else renderFlatPlan(svg);
+}
+
+function renderFlatPlan(svg) {
   const trayBox = state.tray.viewBox || '-14 -14 224 128';
   let [minX, minY, width, height] = trayBox.split(/\s+/).map(Number);
   const portrait = isPortrait();
@@ -384,6 +401,310 @@ function renderPlan() {
   }
 }
 
+/* ----------------------------------------------------------------- la tour */
+
+/**
+ * Une tour est dessinee en projection « tourne-disque » : les pots d'un etage
+ * sont repartis sur un cercle vu de trois quarts, ecrase verticalement. Pour un
+ * pot d'angle t : x = sin(t), et cos(t) donne a la fois le decalage vertical,
+ * la taille, l'opacite et l'ordre d'affichage (les pots de derriere passent
+ * derriere la colonne). Pas de WebGL : ca reste du SVG cliquable.
+ */
+const TOWER = {
+  colW: 32, // largeur de la colonne
+  // tierH doit rester > 2*ringRy + potH, sinon un pot de devant chevauche le
+  // pot de derriere de l'etage suivant.
+  tierH: 54, // ecart vertical entre deux etages
+  ringR: 52, // rayon horizontal du cercle des pots
+  // ringRy = a quel point on regarde la tour de haut. Trop bas, les pots de
+  // devant et de derriere se superposent ; trop haut, les etages se telescopent.
+  ringRy: 15,
+  potW: 34,
+  potH: 22,
+  topY: 40, // hauteur du premier etage
+  baseH: 46,
+};
+
+const towerGeometry = () => ({
+  tiers: state.tray?.tower?.tiers ?? 10,
+  potsPerTier: state.tray?.tower?.potsPerTier ?? 4,
+});
+
+function potPath(w, h) {
+  return [
+    `M ${-w / 2},${-h / 2}`,
+    `L ${w / 2},${-h / 2}`,
+    `L ${w * 0.3},${h * 0.4}`,
+    `Q ${w * 0.28},${h / 2} ${w * 0.2},${h / 2}`,
+    `L ${-w * 0.2},${h / 2}`,
+    `Q ${-w * 0.28},${h / 2} ${-w * 0.3},${h * 0.4}`,
+    'Z',
+  ].join(' ');
+}
+
+function renderTower(svg) {
+  const { tiers, potsPerTier } = towerGeometry();
+  const lastTierY = TOWER.topY + (tiers - 1) * TOWER.tierH;
+  const baseTop = lastTierY + 28;
+  const totalH = baseTop + TOWER.baseH + 18;
+  svg.setAttribute('viewBox', `-100 0 200 ${totalH}`);
+
+  const step = (Math.PI * 2) / potsPerTier;
+  const rotation = (state.towerAngle * Math.PI) / 180;
+
+  const pots = state.cells
+    .filter((cell) => cell.tier)
+    .map((cell) => {
+      // Un etage sur deux est decale d'un demi-pas, comme sur la vraie tour.
+      const angle = cell.slot * step + (cell.tier % 2 === 0 ? step / 2 : 0) + rotation;
+      const cos = Math.cos(angle);
+      return {
+        cell,
+        x: Math.sin(angle) * TOWER.ringR,
+        y: TOWER.topY + (cell.tier - 1) * TOWER.tierH + cos * TOWER.ringRy,
+        depth: cos, // +1 = devant, -1 = derriere
+        scale: 0.74 + 0.26 * ((cos + 1) / 2),
+      };
+    })
+    .sort((a, b) => a.depth - b.depth);
+
+  // 1. les pots de derriere, 2. la colonne qui les masque, 3. le bac,
+  // 4. les pots de devant.
+  for (const pot of pots.filter((p) => p.depth < 0)) svg.append(renderPot(pot));
+
+  svg.append(
+    el('rect', {
+      x: -TOWER.colW / 2,
+      y: TOWER.topY - 26,
+      width: TOWER.colW,
+      height: baseTop + 10 - (TOWER.topY - 26),
+      rx: 5,
+      fill: 'var(--tray)',
+      stroke: 'var(--tray-edge)',
+      'stroke-width': 1.4,
+    }),
+    el('ellipse', {
+      cx: 0,
+      cy: TOWER.topY - 26,
+      rx: TOWER.colW / 2,
+      ry: TOWER.colW / 4,
+      fill: 'var(--surface-2)',
+      stroke: 'var(--tray-edge)',
+      'stroke-width': 1.2,
+    }),
+  );
+
+  svg.append(renderTowerBase(baseTop));
+
+  for (const pot of pots.filter((p) => p.depth >= 0)) svg.append(renderPot(pot));
+
+  // Numeros d'etage, pour se reperer quand la tour tourne.
+  for (let tier = 1; tier <= tiers; tier += 1) {
+    svg.append(
+      el(
+        'text',
+        {
+          class: 'tower__tier',
+          x: -(TOWER.ringR + TOWER.potW / 2 + 6),
+          y: TOWER.topY + (tier - 1) * TOWER.tierH,
+          'text-anchor': 'end',
+          fill: 'var(--muted)',
+        },
+        String(tier),
+      ),
+    );
+  }
+}
+
+function renderTowerBase(baseTop) {
+  const group = el('g', {});
+  const top = 58;
+  const bottom = 48;
+  const h = TOWER.baseH;
+  group.append(
+    el('path', {
+      d: [
+        `M ${-top},${baseTop}`,
+        `L ${top},${baseTop}`,
+        `L ${bottom},${baseTop + h}`,
+        `Q ${bottom},${baseTop + h + 5} ${bottom - 6},${baseTop + h + 5}`,
+        `L ${-bottom + 6},${baseTop + h + 5}`,
+        `Q ${-bottom},${baseTop + h + 5} ${-bottom},${baseTop + h}`,
+        'Z',
+      ].join(' '),
+      fill: 'var(--tray)',
+      stroke: 'var(--tray-edge)',
+      'stroke-width': 1.4,
+    }),
+    el('ellipse', {
+      cx: 0,
+      cy: baseTop,
+      rx: top,
+      ry: 10,
+      fill: 'var(--surface-2)',
+      stroke: 'var(--tray-edge)',
+      'stroke-width': 1.2,
+    }),
+    // hublot de niveau d'eau
+    el('rect', {
+      x: -34,
+      y: baseTop + 12,
+      width: 7,
+      height: h - 4,
+      rx: 3.5,
+      fill: 'var(--surface-2)',
+      stroke: 'var(--tray-edge)',
+      'stroke-width': 0.8,
+    }),
+  );
+  return group;
+}
+
+function renderPot({ cell, x, y, depth, scale }) {
+  const planting = cell.planting;
+  const color = planting?.varietyColor || null;
+  const status = planting?.status ?? null;
+  const failed = status === 'rate';
+  const stroke = STATUS_STROKE[status] ?? STATUS_STROKE.seme;
+  const strokeColor = !planting
+    ? 'var(--tray-edge)'
+    : failed
+      ? 'var(--danger)'
+      : textColorOn(color);
+
+  const group = el('g', {
+    class: [
+      'hole',
+      planting ? 'hole--filled' : 'hole--empty',
+      cell.id === state.selectedCellId ? 'hole--selected' : '',
+    ]
+      .filter(Boolean)
+      .join(' '),
+    'data-cell': cell.id,
+    role: 'button',
+    tabindex: '0',
+    'aria-label': describeCell(cell),
+    transform: `translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${scale.toFixed(3)})`,
+    // Les pots de derriere sont estompes : c'est ce qui donne la profondeur.
+    opacity: (0.5 + 0.5 * ((depth + 1) / 2)).toFixed(3),
+  });
+
+  const { potW: w, potH: h } = TOWER;
+
+  group.append(
+    el('path', {
+      d: potPath(w, h),
+      fill: color || 'var(--hole)',
+      'fill-opacity': failed ? 0.2 : 1,
+      stroke: strokeColor,
+      'stroke-width': planting ? stroke.width : 1,
+      'stroke-opacity': planting && !failed ? 0.55 : 1,
+      'stroke-dasharray': !planting ? '2 2' : stroke.dash,
+      'stroke-linejoin': 'round',
+    }),
+    // ouverture du pot
+    el('ellipse', {
+      cx: 0,
+      cy: -h / 2,
+      rx: w / 2,
+      ry: w / 9,
+      fill: color || 'var(--hole)',
+      'fill-opacity': failed ? 0.25 : 1,
+      stroke: strokeColor,
+      'stroke-width': planting ? 0.9 : 1,
+      'stroke-opacity': 0.55,
+      filter: 'brightness(0.82)',
+    }),
+  );
+
+  if (cell.id === state.selectedCellId) {
+    group.append(
+      el('rect', {
+        x: -w / 2 - 3,
+        y: -h / 2 - w / 9 - 3,
+        width: w + 6,
+        height: h + w / 9 + 6,
+        rx: 5,
+        fill: 'none',
+        stroke: 'var(--accent)',
+        'stroke-width': 2,
+      }),
+    );
+  }
+
+  const variety = planting?.varietyId ? varietyById(planting.varietyId) : null;
+  const label = variety?.number ?? (planting ? '•' : '');
+  if (label !== '') {
+    group.append(
+      el(
+        'text',
+        {
+          class: 'tower__num',
+          x: 0,
+          y: h * 0.05,
+          'text-anchor': 'middle',
+          'dominant-baseline': 'central',
+          fill: planting && !failed ? textColorOn(color) : 'var(--muted)',
+        },
+        String(label),
+      ),
+    );
+  }
+
+  return group;
+}
+
+/* ------------------------------------------------------- rotation de la tour */
+
+function setTowerAngle(degrees) {
+  state.towerAngle = ((degrees % 360) + 360) % 360;
+  $('rot-range').value = String(Math.round(state.towerAngle));
+  renderPlan();
+}
+
+let towerDrag = null;
+let suppressClick = false;
+
+$('plan').addEventListener('pointerdown', (event) => {
+  if (state.tray?.kind !== 'tower') return;
+  towerDrag = { x: event.clientX, angle: state.towerAngle, moved: false };
+});
+
+$('plan').addEventListener('pointermove', (event) => {
+  if (!towerDrag) return;
+  const dx = event.clientX - towerDrag.x;
+  if (!towerDrag.moved) {
+    if (Math.abs(dx) <= 4) return; // simple clic, pas encore un glissement
+    towerDrag.moved = true;
+    hideTooltip();
+    // On ne capture le pointeur qu'une fois le glissement engage : capturer
+    // des le pointerdown enverrait le clic suivant au SVG et non au pot, et la
+    // fiche ne s'ouvrirait plus.
+    $('plan').setPointerCapture(event.pointerId);
+  }
+  setTowerAngle(towerDrag.angle + dx * 0.7);
+});
+
+for (const type of ['pointerup', 'pointercancel']) {
+  $('plan').addEventListener(type, (event) => {
+    if (!towerDrag) return;
+    // Un glissement ne doit pas ouvrir la fiche du pot relache.
+    suppressClick = towerDrag.moved;
+    towerDrag = null;
+    if ($('plan').hasPointerCapture?.(event.pointerId)) {
+      $('plan').releasePointerCapture(event.pointerId);
+    }
+  });
+}
+
+$('rot-range').addEventListener('input', (event) => setTowerAngle(Number(event.target.value)));
+$('rot-left').addEventListener('click', () =>
+  setTowerAngle(state.towerAngle - 360 / towerGeometry().potsPerTier),
+);
+$('rot-right').addEventListener('click', () =>
+  setTowerAngle(state.towerAngle + 360 / towerGeometry().potsPerTier),
+);
+
 // Bascule paysage <-> portrait : on redessine quand le seuil est franchi.
 let wasPortrait = isPortrait();
 window.addEventListener('resize', () => {
@@ -398,7 +719,7 @@ const canHover = () => window.matchMedia('(hover: hover)').matches;
 
 function tooltipHtml(cell) {
   const planting = cell.planting;
-  const lines = [`<b>Trou ${cell.position}</b>`];
+  const lines = [`<b>${escapeHtml(cellLabel(cell))}</b>`];
 
   if (!planting) {
     lines.push('<span class="tip__muted">Vide</span>');
@@ -446,10 +767,10 @@ function hideTooltip() {
 }
 
 function describeCell(cell) {
-  if (!cell.planting) return `Trou ${cell.position} — vide`;
+  if (!cell.planting) return `${cellLabel(cell)} — vide`;
   const age = daysSince(cell.planting.sownOn);
   const parts = [
-    `Trou ${cell.position}`,
+    cellLabel(cell),
     cell.planting.varietyLabel || 'sans variété',
     STATUS_LABELS[cell.planting.status] ?? cell.planting.status,
   ];
@@ -464,9 +785,11 @@ function renderQuickfill() {
   const variety = state.quickfillVarietyId ? varietyById(state.quickfillVarietyId) : null;
   if (!variety) {
     bar.hidden = true;
+    const tower = state.tray?.kind === 'tower';
+    const what = tower ? 'un pot' : 'un trou';
     $('hint').textContent = canHover()
-      ? 'Survole un trou pour voir son contenu, clique pour le modifier.'
-      : 'Touche un trou pour renseigner ce que tu y as mis.';
+      ? `Survole ${what} pour voir son contenu, clique pour le modifier.${tower ? ' Fais glisser la tour pour la tourner.' : ''}`
+      : `Touche ${what} pour renseigner ce que tu y as mis.${tower ? ' Fais glisser la tour pour la tourner.' : ''}`;
     return;
   }
   bar.hidden = false;
@@ -491,7 +814,7 @@ const applyQuickfill = run(async (cell) => {
   cell.planting = planting;
   renderStats();
   renderPlan();
-  toast(`Trou ${cell.position} → ${variety.name}`);
+  toast(`${cellLabel(cell)} → ${variety.name}`);
 });
 
 /* ----------------------------------------------------------- fiche du trou */
@@ -500,7 +823,7 @@ function openCellSheet(cell) {
   state.selectedCellId = cell.id;
   renderPlan();
 
-  $('cell-title').textContent = `Trou ${cell.position}`;
+  $('cell-title').textContent = cellLabel(cell);
 
   const select = $('f-variety');
   const empty = document.createElement('option');
@@ -525,6 +848,7 @@ function openCellSheet(cell) {
   updateAge();
 
   $('btn-clear').hidden = !cell.planting;
+  $('btn-clear').textContent = `Vider le ${cellNoun()}`;
   showClearChoices(false);
   renderHistory(cell);
   openSheet('cell-sheet');
@@ -538,7 +862,7 @@ function updateAge() {
 const renderHistory = run(async (cell) => {
   const box = $('history');
   if (!cell.historyCount) {
-    box.innerHTML = '<h3>Historique</h3><p class="history__empty">Aucun cycle terminé pour ce trou.</p>';
+    box.innerHTML = `<h3>Historique</h3><p class="history__empty">Aucun cycle terminé pour ce ${cellNoun()}.</p>`;
     return;
   }
   box.innerHTML = '<h3>Historique</h3><p class="history__empty">Chargement…</p>';
@@ -857,7 +1181,7 @@ $('cell-form').addEventListener(
       }
       closeSheet('cell-sheet');
       await load();
-      toast(`Trou ${cell.position} vidé`);
+      toast(`${cellLabel(cell)} vidé`);
       return;
     }
 
@@ -872,7 +1196,7 @@ $('cell-form').addEventListener(
     });
     closeSheet('cell-sheet');
     await load();
-    toast(`Trou ${cell.position} enregistré`);
+    toast(`${cellLabel(cell)} enregistré`);
   }),
 );
 
@@ -897,7 +1221,7 @@ for (const button of document.querySelectorAll('#clear-choices [data-outcome]'))
       });
       closeSheet('cell-sheet');
       await load();
-      toast(`Trou ${cell.position} vidé (${OUTCOME_LABELS[outcome].toLowerCase()})`);
+      toast(`${cellLabel(cell)} vidé (${OUTCOME_LABELS[outcome].toLowerCase()})`);
     }),
   );
 }
@@ -920,7 +1244,9 @@ $('legend-form').addEventListener(
 );
 
 $('t-source').addEventListener('change', () => {
-  $('t-grid-size').hidden = $('t-source').value !== 'grid';
+  const source = $('t-source').value;
+  $('t-grid-size').hidden = source !== 'grid';
+  $('t-tower-size').hidden = source !== 'tower';
 });
 
 $('tray-form').addEventListener(
@@ -935,6 +1261,8 @@ $('tray-form').addEventListener(
         copyFrom: state.tray?.id,
         rows: Number($('t-rows').value),
         cols: Number($('t-cols').value),
+        tiers: Number($('t-tiers').value),
+        potsPerTier: Number($('t-pots').value),
       }),
     });
     $('t-name').value = '';

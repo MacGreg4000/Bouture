@@ -20,8 +20,13 @@ Pensée pour être consultée et remplie depuis un smartphone, sur le réseau lo
   touché la reçoit — pratique pour remplir un bac entier en quelques secondes.
 - **Historique** : vider un trou archive le cycle (variété, dates, issue) au lieu de
   l'effacer. L'historique reste consultable dans la fiche du trou.
-- **Plusieurs bacs** : on peut ajouter d'autres bacs (tour hydroponie, 2ᵉ machine…),
-  soit avec le même plan, soit avec une grille en quinconce sur mesure.
+- **Tours d'aquaponie** : une tour verticale est affichée en vue tournante, avec
+  ses pots répartis autour de la colonne. On la fait tourner en la faisant glisser
+  ou avec le curseur sous le schéma, et chaque pot se renseigne exactement comme
+  un trou de bac (variété, date, statut, note, historique).
+- **Plusieurs bacs** : on peut ajouter d'autres bacs et tours, avec le même plan
+  que la machine à boutures, une grille en quinconce sur mesure, une tour
+  d'étages × pots au choix, ou la copie d'un existant.
 - **Aucun login** : prévu pour un usage sur réseau local uniquement (voir Sécurité).
 
 ## Installation sur le serveur Ubuntu
@@ -116,8 +121,20 @@ server/
 web/                   interface (HTML/CSS/JS natifs, aucune dépendance)
 ```
 
-Modèle de données : `trays` (bacs) → `cells` (trous, position fixe) → `plantings`
-(un semis). Un trou peut avoir plusieurs `plantings` mais **un seul en cours** —
+Modèle de données : `trays` (bacs) → `cells` (emplacements) → `plantings`
+(un semis). Un `tray` a un `kind` : `tray` (bac à plat) ou `tower` (tour). Un
+emplacement est repéré soit par `cx`/`cy` pour un bac à plat, soit par
+`tier`/`slot` (étage et index du pot) pour une tour ; le reste de l'application
+ne fait aucune différence entre les deux.
+
+Une tour est dessinée en projection « tourne-disque », sans WebGL : les pots d'un
+étage sont placés sur un cercle vu de trois quarts, et le `cos` de l'angle donne à
+la fois le décalage vertical, la taille, l'opacité et l'ordre d'affichage — d'où
+les pots qui passent derrière la colonne. Les réglages de perspective sont les
+constantes `TOWER` en haut de [`web/app.js`](web/app.js) ; `tierH` doit rester
+supérieur à `2 × ringRy + potH`, sinon les étages se télescopent.
+
+Un emplacement peut avoir plusieurs `plantings` mais **un seul en cours** —
 garanti par un index unique partiel sur `ended_on IS NULL`. Vider un trou ne supprime
 rien : cela renseigne `ended_on` et `outcome`, ce qui constitue l'historique.
 

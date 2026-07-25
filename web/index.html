@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#1f6f3f" />
     <title>Bac à boutures</title>
     <!-- Bump ?v= a chaque mise a jour du CSS/JS pour forcer les navigateurs deja ouverts. -->
-    <link rel="stylesheet" href="/styles.css?v=7" />
+    <link rel="stylesheet" href="/styles.css?v=12" />
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>"
@@ -29,6 +29,19 @@
         <div class="board__stats" id="stats"></div>
         <div class="board__plan">
           <svg id="plan" role="img" aria-label="Plan du bac à boutures"></svg>
+        </div>
+        <div class="rotator" id="rotator" hidden>
+          <button type="button" class="btn btn--small" id="rot-left" aria-label="Tourner vers la gauche">◀</button>
+          <input
+            type="range"
+            id="rot-range"
+            min="0"
+            max="359"
+            step="1"
+            value="0"
+            aria-label="Rotation de la tour"
+          />
+          <button type="button" class="btn btn--small" id="rot-right" aria-label="Tourner vers la droite">▶</button>
         </div>
         <div class="board__quickfill" id="quickfill" hidden>
           <span class="quickfill__dot" id="quickfill-dot"></span>
@@ -139,6 +152,7 @@
             <span>Plan de départ</span>
             <select id="t-source">
               <option value="default">Même plan que la machine à boutures</option>
+              <option value="tower">Tour d'aquaponie (vue tournante)</option>
               <option value="copy">Copier le plan du bac affiché</option>
               <option value="grid">Grille en quinconce</option>
             </select>
@@ -153,6 +167,16 @@
               <input type="number" id="t-cols" value="4" min="2" max="12" />
             </label>
           </div>
+          <div class="field-row" id="t-tower-size" hidden>
+            <label class="field">
+              <span>Étages</span>
+              <input type="number" id="t-tiers" value="10" min="1" max="30" />
+            </label>
+            <label class="field">
+              <span>Pots par étage</span>
+              <input type="number" id="t-pots" value="4" min="2" max="12" />
+            </label>
+          </div>
           <div class="form__actions">
             <button type="submit" class="btn btn--primary">Créer le bac</button>
           </div>
@@ -163,6 +187,6 @@
     <div class="tip" id="tip" role="tooltip" hidden></div>
     <div class="toast" id="toast" hidden></div>
 
-    <script type="module" src="/app.js?v=7"></script>
+    <script type="module" src="/app.js?v=12"></script>
   </body>
 </html>

@@ -12,6 +12,13 @@ CREATE TABLE IF NOT EXISTS trays (
 -- Repere d'orientation : pied de la lampe. {"cx":..,"cy":..,"dir":"up|down|left|right"}
 ALTER TABLE trays ADD COLUMN IF NOT EXISTS lamp jsonb;
 
+-- 'tray' = bac a plat (plan vu de dessus), 'tower' = tour verticale (vue tournante).
+ALTER TABLE trays ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'tray';
+-- Geometrie d'une tour : {"tiers":10,"potsPerTier":4}
+ALTER TABLE trays ADD COLUMN IF NOT EXISTS tower jsonb;
+-- Une tour n'a pas de view_box en base : elle le calcule depuis sa geometrie.
+ALTER TABLE trays ALTER COLUMN view_box DROP NOT NULL;
+
 CREATE TABLE IF NOT EXISTS cells (
   id       serial PRIMARY KEY,
   tray_id  int  NOT NULL REFERENCES trays(id) ON DELETE CASCADE,
@@ -22,6 +29,12 @@ CREATE TABLE IF NOT EXISTS cells (
 );
 
 CREATE INDEX IF NOT EXISTS cells_tray_idx ON cells (tray_id);
+
+-- Un emplacement est repere soit par cx/cy (bac a plat), soit par tier/slot (tour).
+ALTER TABLE cells ADD COLUMN IF NOT EXISTS tier int;
+ALTER TABLE cells ADD COLUMN IF NOT EXISTS slot int;
+ALTER TABLE cells ALTER COLUMN cx DROP NOT NULL;
+ALTER TABLE cells ALTER COLUMN cy DROP NOT NULL;
 
 CREATE TABLE IF NOT EXISTS varieties (
   id         serial PRIMARY KEY,

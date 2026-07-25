@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { query, withTransaction } from '../db/pool.js';
-import { buildGrid, DEFAULT_TRAY, HOLE_RADIUS, HOLES } from '../db/layout.js';
+import { buildGrid, buildTower, DEFAULT_TRAY, HOLE_RADIUS, HOLES } from '../db/layout.js';
 
 export const api = Router();
 
@@ -55,7 +55,8 @@ const asyncRoute = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next
 
 async function loadTrayState(trayId) {
   const { rows: trays } = await query(
-    'SELECT id, name, view_box AS "viewBox", reservoir, lamp FROM trays ORDER BY sort_order, id',
+    `SELECT id, name, kind, view_box AS "viewBox", reservoir, lamp, tower
+       FROM trays ORDER BY sort_order, id`,
   );
   if (!trays.length) return { trays: [], tray: null, cells: [] };
 
@@ -66,6 +67,8 @@ async function loadTrayState(trayId) {
             c.position,
             c.cx,
             c.cy,
+            c.tier,
+            c.slot,
             p.id            AS planting_id,
             p.variety_id,
             p.variety_label,
@@ -90,6 +93,8 @@ async function loadTrayState(trayId) {
       position: row.position,
       cx: row.cx,
       cy: row.cy,
+      tier: row.tier,
+      slot: row.slot,
       historyCount: row.history_count,
       planting: row.planting_id
         ? {
@@ -141,17 +146,27 @@ api.post(
     const name = cleanText(req.body.name, { max: 80, field: 'Nom du bac' });
     if (!name) throw bad('Le nom du bac est obligatoire');
 
-    const source = req.body.source === 'copy' ? 'copy' : req.body.source === 'default' ? 'default' : 'grid';
+    const SOURCES = ['default', 'copy', 'grid', 'tower'];
+    const source = SOURCES.includes(req.body.source) ? req.body.source : 'grid';
     const rows = Math.min(24, Math.max(1, Number.parseInt(req.body.rows, 10) || 6));
     const cols = Math.min(12, Math.max(2, Number.parseInt(req.body.cols, 10) || 4));
+    const tiers = Math.min(30, Math.max(1, Number.parseInt(req.body.tiers, 10) || 10));
+    const potsPerTier = Math.min(12, Math.max(2, Number.parseInt(req.body.potsPerTier, 10) || 4));
 
     const tray = await withTransaction(async (client) => {
       let holes;
-      let viewBox;
+      let viewBox = null;
       let reservoir = null;
       let lamp = null;
+      let kind = 'tray';
+      let tower = null;
 
-      if (source === 'default') {
+      if (source === 'tower') {
+        const built = buildTower(tiers, potsPerTier);
+        holes = built.cells;
+        tower = built.tower;
+        kind = 'tower';
+      } else if (source === 'default') {
         holes = HOLES.map((h) => ({ cx: h.cx, cy: h.cy }));
         viewBox = DEFAULT_TRAY.viewBox;
         reservoir = DEFAULT_TRAY.reservoir;
@@ -159,18 +174,20 @@ api.post(
       } else if (source === 'copy') {
         const copyFrom = cleanId(req.body.copyFrom, 'Bac');
         const { rows: src } = await client.query(
-          'SELECT view_box, reservoir, lamp FROM trays WHERE id = $1',
+          'SELECT kind, view_box, reservoir, lamp, tower FROM trays WHERE id = $1',
           [copyFrom],
         );
         if (!src.length) throw notFound('Bac à copier introuvable');
         const { rows: srcCells } = await client.query(
-          'SELECT cx, cy FROM cells WHERE tray_id = $1 ORDER BY position',
+          'SELECT cx, cy, tier, slot FROM cells WHERE tray_id = $1 ORDER BY position',
           [copyFrom],
         );
         holes = srcCells;
+        kind = src[0].kind;
         viewBox = src[0].view_box;
         reservoir = src[0].reservoir;
         lamp = src[0].lamp;
+        tower = src[0].tower;
       } else {
         const grid = buildGrid(rows, cols);
         holes = grid.holes;
@@ -178,17 +195,18 @@ api.post(
       }
 
       const { rows: created } = await client.query(
-        `INSERT INTO trays (name, view_box, reservoir, lamp, sort_order)
-         VALUES ($1, $2, $3, $4, (SELECT coalesce(max(sort_order), 0) + 1 FROM trays))
-         RETURNING id, name, view_box AS "viewBox", reservoir, lamp`,
-        [name, viewBox, reservoir, lamp],
+        `INSERT INTO trays (name, kind, view_box, reservoir, lamp, tower, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, (SELECT coalesce(max(sort_order), 0) + 1 FROM trays))
+         RETURNING id, name, kind, view_box AS "viewBox", reservoir, lamp, tower`,
+        [name, kind, viewBox, reservoir, lamp, tower],
       );
       const trayId = created[0].id;
 
       for (const [index, hole] of holes.entries()) {
         await client.query(
-          'INSERT INTO cells (tray_id, position, cx, cy) VALUES ($1, $2, $3, $4)',
-          [trayId, index + 1, hole.cx, hole.cy],
+          `INSERT INTO cells (tray_id, position, cx, cy, tier, slot)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [trayId, index + 1, hole.cx ?? null, hole.cy ?? null, hole.tier ?? null, hole.slot ?? null],
         );
       }
       return created[0];
@@ -205,7 +223,8 @@ api.patch(
     const name = cleanText(req.body.name, { max: 80, field: 'Nom du bac' });
     if (!name) throw bad('Le nom du bac est obligatoire');
     const { rows } = await query(
-      'UPDATE trays SET name = $2 WHERE id = $1 RETURNING id, name, view_box AS "viewBox", reservoir, lamp',
+      `UPDATE trays SET name = $2 WHERE id = $1
+        RETURNING id, name, kind, view_box AS "viewBox", reservoir, lamp, tower`,
       [id, name],
     );
     if (!rows.length) throw notFound('Bac introuvable');
