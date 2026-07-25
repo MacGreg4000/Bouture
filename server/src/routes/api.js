@@ -55,7 +55,7 @@ const asyncRoute = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next
 
 async function loadTrayState(trayId) {
   const { rows: trays } = await query(
-    'SELECT id, name, view_box AS "viewBox", reservoir FROM trays ORDER BY sort_order, id',
+    'SELECT id, name, view_box AS "viewBox", reservoir, lamp FROM trays ORDER BY sort_order, id',
   );
   if (!trays.length) return { trays: [], tray: null, cells: [] };
 
@@ -149,15 +149,17 @@ api.post(
       let holes;
       let viewBox;
       let reservoir = null;
+      let lamp = null;
 
       if (source === 'default') {
         holes = HOLES.map((h) => ({ cx: h.cx, cy: h.cy }));
         viewBox = DEFAULT_TRAY.viewBox;
         reservoir = DEFAULT_TRAY.reservoir;
+        lamp = DEFAULT_TRAY.lamp;
       } else if (source === 'copy') {
         const copyFrom = cleanId(req.body.copyFrom, 'Bac');
         const { rows: src } = await client.query(
-          'SELECT view_box, reservoir FROM trays WHERE id = $1',
+          'SELECT view_box, reservoir, lamp FROM trays WHERE id = $1',
           [copyFrom],
         );
         if (!src.length) throw notFound('Bac à copier introuvable');
@@ -168,6 +170,7 @@ api.post(
         holes = srcCells;
         viewBox = src[0].view_box;
         reservoir = src[0].reservoir;
+        lamp = src[0].lamp;
       } else {
         const grid = buildGrid(rows, cols);
         holes = grid.holes;
@@ -175,10 +178,10 @@ api.post(
       }
 
       const { rows: created } = await client.query(
-        `INSERT INTO trays (name, view_box, reservoir, sort_order)
-         VALUES ($1, $2, $3, (SELECT coalesce(max(sort_order), 0) + 1 FROM trays))
-         RETURNING id, name, view_box AS "viewBox", reservoir`,
-        [name, viewBox, reservoir],
+        `INSERT INTO trays (name, view_box, reservoir, lamp, sort_order)
+         VALUES ($1, $2, $3, $4, (SELECT coalesce(max(sort_order), 0) + 1 FROM trays))
+         RETURNING id, name, view_box AS "viewBox", reservoir, lamp`,
+        [name, viewBox, reservoir, lamp],
       );
       const trayId = created[0].id;
 
@@ -202,7 +205,7 @@ api.patch(
     const name = cleanText(req.body.name, { max: 80, field: 'Nom du bac' });
     if (!name) throw bad('Le nom du bac est obligatoire');
     const { rows } = await query(
-      'UPDATE trays SET name = $2 WHERE id = $1 RETURNING id, name, view_box AS "viewBox", reservoir',
+      'UPDATE trays SET name = $2 WHERE id = $1 RETURNING id, name, view_box AS "viewBox", reservoir, lamp',
       [id, name],
     );
     if (!rows.length) throw notFound('Bac introuvable');

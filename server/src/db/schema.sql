@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS trays (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- Repere d'orientation : pied de la lampe. {"cx":..,"cy":..,"dir":"up|down|left|right"}
+ALTER TABLE trays ADD COLUMN IF NOT EXISTS lamp jsonb;
+
 CREATE TABLE IF NOT EXISTS cells (
   id       serial PRIMARY KEY,
   tray_id  int  NOT NULL REFERENCES trays(id) ON DELETE CASCADE,

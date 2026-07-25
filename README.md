@@ -9,8 +9,10 @@ Pensée pour être consultée et remplie depuis un smartphone, sur le réseau lo
 ## Ce que ça fait
 
 - **Plan fidèle du bac** : 52 trous en quinconce, disposés comme sur la machine,
-  avec le bouchon du réservoir au centre. Sur téléphone, le plan pivote
-  automatiquement d'un quart de tour pour tenir dans l'écran.
+  avec le bouchon du réservoir au centre et un **symbole de lampe** à l'endroit du
+  pied télescopique, qui sert de repère pour orienter le plan comme la vraie
+  machine. Sur téléphone, le plan pivote automatiquement d'un quart de tour pour
+  tenir dans l'écran.
 - **Une couleur et un numéro par variété**, comme sur le plan papier.
 - **Par trou** : variété, date de semis (avec le nombre de jours écoulés),
   statut (semé / germé / repiqué / raté) et note libre.
@@ -77,6 +79,9 @@ tableau `ROWS` : une ligne par rangée du bac, avec le nombre d'emplacements (`s
 3 ou 4) et le numéro de variété de chaque emplacement (`null` = pas de trou à cet
 endroit, c'est le bouchon du réservoir). La géométrie et la symétrie sont calculées
 automatiquement — il n'y a aucune coordonnée à saisir.
+
+Le repère de la lampe se règle juste en dessous, dans `DEFAULT_TRAY.lamp` : s'il
+apparaît du mauvais côté du bac, passe `cy` à `100` et `dir` à `'down'`.
 
 Après modification :
 

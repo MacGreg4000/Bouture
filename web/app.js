@@ -164,14 +164,88 @@ function renderStats() {
 // pour etre touches et le plan deborde en largeur.
 const isPortrait = () => window.matchMedia('(max-width: 600px)').matches;
 
+const LAMP_STEM = 8; // longueur du pied qui depasse du bac
+const LAMP_R = 4.6; // rayon de l'ampoule
+const LAMP_DIRECTIONS = {
+  up: { dx: 0, dy: -1 },
+  down: { dx: 0, dy: 1 },
+  left: { dx: -1, dy: 0 },
+  right: { dx: 1, dy: 0 },
+};
+
+/**
+ * Repere d'orientation : le pied telescopique de la lampe. Le symbole est
+ * radial (ampoule + rayons) donc il reste lisible meme quand le plan pivote.
+ */
+function renderLamp(lamp, dir) {
+  const bx = lamp.cx + dir.dx * (LAMP_STEM + LAMP_R);
+  const by = lamp.cy + dir.dy * (LAMP_STEM + LAMP_R);
+  const group = el('g', { class: 'lamp' });
+
+  group.append(
+    el('line', {
+      x1: lamp.cx,
+      y1: lamp.cy,
+      x2: lamp.cx + dir.dx * LAMP_STEM,
+      y2: lamp.cy + dir.dy * LAMP_STEM,
+      stroke: 'var(--tray-edge)',
+      'stroke-width': 2.6,
+      'stroke-linecap': 'round',
+    }),
+    el('circle', {
+      cx: bx,
+      cy: by,
+      r: LAMP_R,
+      fill: 'var(--lamp)',
+      stroke: 'var(--tray-edge)',
+      'stroke-width': 1,
+    }),
+  );
+
+  for (let i = 0; i < 8; i += 1) {
+    const angle = (i * Math.PI) / 4;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    group.append(
+      el('line', {
+        x1: bx + cos * (LAMP_R + 1.4),
+        y1: by + sin * (LAMP_R + 1.4),
+        x2: bx + cos * (LAMP_R + 3.4),
+        y2: by + sin * (LAMP_R + 3.4),
+        stroke: 'var(--lamp)',
+        'stroke-width': 1.1,
+        'stroke-linecap': 'round',
+      }),
+    );
+  }
+
+  group.append(el('title', {}, 'Pied de la lampe'));
+  return group;
+}
+
 function renderPlan() {
   const svg = $('plan');
   svg.replaceChildren();
   if (!state.tray) return;
 
-  const viewBox = state.tray.viewBox || '-14 -14 224 128';
-  const [minX, minY, width, height] = viewBox.split(/\s+/).map(Number);
+  const trayBox = state.tray.viewBox || '-14 -14 224 128';
+  let [minX, minY, width, height] = trayBox.split(/\s+/).map(Number);
   const portrait = isPortrait();
+
+  // Le repere de la lampe depasse du bac : on agrandit la zone de dessin de ce
+  // cote-la, sans toucher au cadre du bac lui-meme.
+  const lamp = state.tray.lamp;
+  const lampDir = LAMP_DIRECTIONS[lamp?.dir] ?? LAMP_DIRECTIONS.up;
+  if (lamp) {
+    const pad = LAMP_STEM + LAMP_R * 2 + 2;
+    if (lampDir.dx < 0) { minX -= pad; width += pad; }
+    if (lampDir.dx > 0) width += pad;
+    if (lampDir.dy < 0) { minY -= pad; height += pad; }
+    if (lampDir.dy > 0) height += pad;
+  }
+
+  const viewBox = `${minX} ${minY} ${width} ${height}`;
+  const [trayX, trayY, trayW, trayH] = trayBox.split(/\s+/).map(Number);
 
   // rotate(90) envoie (x, y) sur (-y, x) : la boite tournee part donc en
   // -(minY + height) sur x et en minX sur y, avec largeur et hauteur echangees.
@@ -185,16 +259,18 @@ function renderPlan() {
 
   root.append(
     el('rect', {
-      x: minX + 3,
-      y: minY + 3,
-      width: width - 6,
-      height: height - 6,
-      rx: Math.min(width, height) * 0.28,
+      x: trayX + 3,
+      y: trayY + 3,
+      width: trayW - 6,
+      height: trayH - 6,
+      rx: Math.min(trayW, trayH) * 0.28,
       fill: 'var(--tray)',
       stroke: 'var(--tray-edge)',
       'stroke-width': 1.4,
     }),
   );
+
+  if (lamp) root.append(renderLamp(lamp, lampDir));
 
   if (state.tray.reservoir) {
     const { cx, cy, r } = state.tray.reservoir;

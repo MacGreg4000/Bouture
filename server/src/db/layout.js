@@ -81,15 +81,20 @@ function buildHoles() {
 
 export const HOLES = buildHoles();
 
+// Bouchon centre entre les 2 rangees du milieu, au milieu de la largeur.
+const RESERVOIR_CX = Number(((rowCx(MIDDLE_ROW - 1) + rowCx(MIDDLE_ROW)) / 2).toFixed(2));
+
 export const DEFAULT_TRAY = {
   name: 'Machine à boutures',
   viewBox: '-6 -6 264 112',
-  // Bouchon centre entre les 2 rangees du milieu, au milieu de la largeur.
-  reservoir: {
-    cx: Number(((rowCx(MIDDLE_ROW - 1) + rowCx(MIDDLE_ROW)) / 2).toFixed(2)),
-    cy: 50,
-    r: 16.8,
-  },
+  reservoir: { cx: RESERVOIR_CX, cy: 50, r: 16.8 },
+  /**
+   * Pied telescopique de la lampe : sert de repere pour orienter le plan comme
+   * la vraie machine. Il arrive sur le bord long, a hauteur du reservoir.
+   * `dir` = le sens dans lequel le pied sort du bac.
+   * Si le repere se retrouve du mauvais cote, passer cy a 100 et dir a 'down'.
+   */
+  lamp: { cx: RESERVOIR_CX, cy: 0, dir: 'up' },
 };
 
 // La legende du plan papier. Modifiable ensuite directement depuis l'interface.

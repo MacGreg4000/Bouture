@@ -38,20 +38,28 @@ export async function seed() {
     const force = process.env.RESEED_LAYOUT === '1';
     let trayId = trayRows[0]?.id ?? null;
 
-    if (trayId && !force) return;
+    if (trayId && !force) {
+      // Base deja installee : on pose le repere de la lampe sans toucher au reste.
+      const { rowCount } = await client.query(
+        'UPDATE trays SET lamp = $2 WHERE id = $1 AND lamp IS NULL',
+        [trayId, DEFAULT_TRAY.lamp],
+      );
+      if (rowCount) console.log('[db] repere de la lampe ajoute au bac principal');
+      return;
+    }
 
     if (!trayId) {
       const { rows } = await client.query(
-        'INSERT INTO trays (name, view_box, reservoir, sort_order) VALUES ($1, $2, $3, 0) RETURNING id',
-        [DEFAULT_TRAY.name, DEFAULT_TRAY.viewBox, DEFAULT_TRAY.reservoir],
+        `INSERT INTO trays (name, view_box, reservoir, lamp, sort_order)
+         VALUES ($1, $2, $3, $4, 0) RETURNING id`,
+        [DEFAULT_TRAY.name, DEFAULT_TRAY.viewBox, DEFAULT_TRAY.reservoir, DEFAULT_TRAY.lamp],
       );
       trayId = rows[0].id;
     } else {
-      await client.query('UPDATE trays SET view_box = $2, reservoir = $3 WHERE id = $1', [
-        trayId,
-        DEFAULT_TRAY.viewBox,
-        DEFAULT_TRAY.reservoir,
-      ]);
+      await client.query(
+        'UPDATE trays SET view_box = $2, reservoir = $3, lamp = $4 WHERE id = $1',
+        [trayId, DEFAULT_TRAY.viewBox, DEFAULT_TRAY.reservoir, DEFAULT_TRAY.lamp],
+      );
       await client.query('DELETE FROM cells WHERE tray_id = $1 AND position > $2', [
         trayId,
         HOLES.length,
