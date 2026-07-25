@@ -24,6 +24,11 @@ Pensée pour être consultée et remplie depuis un smartphone, sur le réseau lo
   ses pots répartis autour de la colonne. On la fait tourner en la faisant glisser
   ou avec le curseur sous le schéma, et chaque pot se renseigne exactement comme
   un trou de bac (variété, date, statut, note, historique).
+  Les **numéros de colonne flottent au-dessus de la tour** et suivent la rotation ;
+  celui de la colonne qui fait face est mis en avant, de sorte qu'on sait toujours
+  où l'on se trouve. Un étage sur deux étant décalé d'un demi-pas, il y a deux fois
+  plus de colonnes que de pots par étage (8 colonnes pour 4 pots par étage), et
+  chaque pot est repéré par « Étage 3 · colonne 5 ».
 - **Plusieurs bacs** : on peut ajouter d'autres bacs et tours, avec le même plan
   que la machine à boutures, une grille en quinconce sur mesure, une tour
   d'étages × pots au choix, ou la copie d'un existant.

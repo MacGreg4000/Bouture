@@ -37,9 +37,18 @@ const state = {
 /** « trou » pour un bac à plat, « pot » pour une tour. */
 const cellNoun = () => (state.tray?.kind === 'tower' ? 'pot' : 'trou');
 
-/** « Trou 12 » pour un bac à plat, « Étage 3 · pot 2 » pour une tour. */
+/**
+ * Colonne (file verticale de pots) d'un pot de tour, numérotée à partir de 1.
+ * Un étage sur deux étant décalé d'un demi-pas, il y a deux fois plus de
+ * colonnes que de pots par étage : les étages impairs occupent les colonnes
+ * impaires, les étages pairs les colonnes paires.
+ */
+const cellColumn = (cell) =>
+  cell.tier ? 2 * cell.slot + (cell.tier % 2 === 0 ? 1 : 0) + 1 : null;
+
+/** « Trou 12 » pour un bac à plat, « Étage 3 · colonne 5 » pour une tour. */
 const cellLabel = (cell) =>
-  cell.tier ? `Étage ${cell.tier} · pot ${cell.slot + 1}` : `Trou ${cell.position}`;
+  cell.tier ? `Étage ${cell.tier} · colonne ${cellColumn(cell)}` : `Trou ${cell.position}`;
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, attrs = {}, children = []) => {
@@ -423,6 +432,8 @@ const TOWER = {
   potH: 22,
   topY: 40, // hauteur du premier etage
   baseH: 46,
+  badgeTop: 40, // place reservee au-dessus pour les numeros de colonne
+  badgeR: 9.5,
 };
 
 const towerGeometry = () => ({
@@ -447,7 +458,8 @@ function renderTower(svg) {
   const lastTierY = TOWER.topY + (tiers - 1) * TOWER.tierH;
   const baseTop = lastTierY + 28;
   const totalH = baseTop + TOWER.baseH + 18;
-  svg.setAttribute('viewBox', `-100 0 200 ${totalH}`);
+  // De la place au-dessus de la tour pour les numéros de colonne flottants.
+  svg.setAttribute('viewBox', `-100 ${-TOWER.badgeTop} 200 ${totalH + TOWER.badgeTop}`);
 
   // Ombrage de cylindre, en noir/blanc translucide pour marcher dans les deux
   // thèmes : un dégradé sur une couleur fixe serait faux en clair ou en sombre.
@@ -513,6 +525,8 @@ function renderTower(svg) {
 
   for (const pot of pots.filter((p) => p.depth >= 0)) svg.append(renderPot(pot));
 
+  svg.append(renderColumnBadges(potsPerTier, step, rotation));
+
   // Numeros d'etage, pour se reperer quand la tour tourne.
   for (let tier = 1; tier <= tiers; tier += 1) {
     svg.append(
@@ -529,6 +543,60 @@ function renderTower(svg) {
       ),
     );
   }
+}
+
+/**
+ * Numeros de colonne flottant au-dessus de la tour. Ils suivent la rotation
+ * comme les pots, et celui de la colonne qui fait face est mis en avant : c'est
+ * lui qui dit ou l'on se trouve a un instant donne.
+ */
+function renderColumnBadges(potsPerTier, step, rotation) {
+  const group = el('g', { class: 'tower__badges' });
+  const half = step / 2;
+  const y = -TOWER.badgeTop + TOWER.badgeR + 4;
+
+  const badges = [];
+  for (let c = 0; c < potsPerTier * 2; c += 1) {
+    const angle = c * half + rotation;
+    badges.push({ n: c + 1, x: Math.sin(angle) * TOWER.ringR, depth: Math.cos(angle) });
+  }
+  badges.sort((a, b) => a.depth - b.depth);
+  const frontDepth = badges[badges.length - 1].depth;
+
+  for (const badge of badges) {
+    const front = badge.depth === frontDepth;
+    const scale = 0.66 + 0.34 * ((badge.depth + 1) / 2);
+    const item = el('g', {
+      transform: `translate(${badge.x.toFixed(2)} ${y}) scale(${scale.toFixed(3)})`,
+      // Les colonnes de derriere s'agglutinent vers le centre : on les efface
+      // franchement pour ne garder que celles qui font face.
+      opacity: (0.22 + 0.78 * ((badge.depth + 1) / 2)).toFixed(3),
+    });
+    item.append(
+      el('circle', {
+        cx: 0,
+        cy: 0,
+        r: TOWER.badgeR,
+        fill: front ? 'var(--accent)' : 'var(--surface-2)',
+        stroke: front ? 'var(--accent)' : 'var(--border)',
+        'stroke-width': 1,
+      }),
+      el(
+        'text',
+        {
+          class: 'tower__col',
+          x: 0,
+          y: 0,
+          'text-anchor': 'middle',
+          'dominant-baseline': 'central',
+          fill: front ? '#fff' : 'var(--muted)',
+        },
+        String(badge.n),
+      ),
+    );
+    group.append(item);
+  }
+  return group;
 }
 
 function renderTowerBase(baseTop) {
@@ -686,6 +754,8 @@ let suppressClick = false;
 
 $('plan').addEventListener('pointerdown', (event) => {
   if (state.tray?.kind !== 'tower') return;
+  // Sans ca, le navigateur demarre sa selection native et surligne tout le SVG.
+  event.preventDefault();
   towerDrag = { x: event.clientX, angle: state.towerAngle, moved: false };
 });
 
@@ -696,6 +766,7 @@ $('plan').addEventListener('pointermove', (event) => {
     if (Math.abs(dx) <= 4) return; // simple clic, pas encore un glissement
     towerDrag.moved = true;
     hideTooltip();
+    $('plan').classList.add('is-grabbing');
     // On ne capture le pointeur qu'une fois le glissement engage : capturer
     // des le pointerdown enverrait le clic suivant au SVG et non au pot, et la
     // fiche ne s'ouvrirait plus.
@@ -710,6 +781,7 @@ for (const type of ['pointerup', 'pointercancel']) {
     // Un glissement ne doit pas ouvrir la fiche du pot relache.
     suppressClick = towerDrag.moved;
     towerDrag = null;
+    $('plan').classList.remove('is-grabbing');
     if ($('plan').hasPointerCapture?.(event.pointerId)) {
       $('plan').releasePointerCapture(event.pointerId);
     }
