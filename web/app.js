@@ -449,6 +449,20 @@ function renderTower(svg) {
   const totalH = baseTop + TOWER.baseH + 18;
   svg.setAttribute('viewBox', `-100 0 200 ${totalH}`);
 
+  // Ombrage de cylindre, en noir/blanc translucide pour marcher dans les deux
+  // thèmes : un dégradé sur une couleur fixe serait faux en clair ou en sombre.
+  const shading = el('linearGradient', { id: 'towerShade', x1: 0, x2: 1, y1: 0, y2: 0 });
+  for (const [offset, color, opacity] of [
+    [0, '#000', 0.2],
+    [0.3, '#fff', 0.07],
+    [0.47, '#fff', 0.18],
+    [0.72, '#000', 0.05],
+    [1, '#000', 0.24],
+  ]) {
+    shading.append(el('stop', { offset, 'stop-color': color, 'stop-opacity': opacity }));
+  }
+  svg.append(el('defs', {}, shading));
+
   const step = (Math.PI * 2) / potsPerTier;
   const rotation = (state.towerAngle * Math.PI) / 180;
 
@@ -472,25 +486,26 @@ function renderTower(svg) {
   // 4. les pots de devant.
   for (const pot of pots.filter((p) => p.depth < 0)) svg.append(renderPot(pot));
 
+  const colBox = {
+    x: -TOWER.colW / 2,
+    y: TOWER.topY - 26,
+    width: TOWER.colW,
+    height: baseTop + 10 - (TOWER.topY - 26),
+    rx: 5,
+  };
   svg.append(
-    el('rect', {
-      x: -TOWER.colW / 2,
-      y: TOWER.topY - 26,
-      width: TOWER.colW,
-      height: baseTop + 10 - (TOWER.topY - 26),
-      rx: 5,
-      fill: 'var(--tray)',
-      stroke: 'var(--tray-edge)',
-      'stroke-width': 1.4,
-    }),
+    el('rect', { ...colBox, fill: 'var(--tray)' }),
+    el('rect', { ...colBox, fill: 'url(#towerShade)' }),
+    el('rect', { ...colBox, fill: 'none', stroke: 'var(--tray-edge)', 'stroke-width': 1.4 }),
     el('ellipse', {
       cx: 0,
       cy: TOWER.topY - 26,
       rx: TOWER.colW / 2,
       ry: TOWER.colW / 4,
-      fill: 'var(--surface-2)',
+      fill: 'var(--tray)',
       stroke: 'var(--tray-edge)',
       'stroke-width': 1.2,
+      filter: 'brightness(1.06)',
     }),
   );
 
@@ -521,8 +536,7 @@ function renderTowerBase(baseTop) {
   const top = 58;
   const bottom = 48;
   const h = TOWER.baseH;
-  group.append(
-    el('path', {
+  const shape = {
       d: [
         `M ${-top},${baseTop}`,
         `L ${top},${baseTop}`,
@@ -532,18 +546,20 @@ function renderTowerBase(baseTop) {
         `Q ${-bottom},${baseTop + h + 5} ${-bottom},${baseTop + h}`,
         'Z',
       ].join(' '),
-      fill: 'var(--tray)',
-      stroke: 'var(--tray-edge)',
-      'stroke-width': 1.4,
-    }),
+  };
+  group.append(
+    el('path', { ...shape, fill: 'var(--tray)' }),
+    el('path', { ...shape, fill: 'url(#towerShade)' }),
+    el('path', { ...shape, fill: 'none', stroke: 'var(--tray-edge)', 'stroke-width': 1.4 }),
     el('ellipse', {
       cx: 0,
       cy: baseTop,
       rx: top,
       ry: 10,
-      fill: 'var(--surface-2)',
+      fill: 'var(--tray)',
       stroke: 'var(--tray-edge)',
       'stroke-width': 1.2,
+      filter: 'brightness(1.06)',
     }),
     // hublot de niveau d'eau
     el('rect', {
@@ -571,6 +587,9 @@ function renderPot({ cell, x, y, depth, scale }) {
     : failed
       ? 'var(--danger)'
       : textColorOn(color);
+  // Un pot vide reste un pot : meme matiere que la colonne. (Sur un bac a plat,
+  // un trou vide laisse voir le reservoir, d'ou --hole la-bas.)
+  const emptyFill = 'var(--tray)';
 
   const group = el('g', {
     class: [
@@ -594,7 +613,7 @@ function renderPot({ cell, x, y, depth, scale }) {
   group.append(
     el('path', {
       d: potPath(w, h),
-      fill: color || 'var(--hole)',
+      fill: color || emptyFill,
       'fill-opacity': failed ? 0.2 : 1,
       stroke: strokeColor,
       'stroke-width': planting ? stroke.width : 1,
@@ -608,7 +627,7 @@ function renderPot({ cell, x, y, depth, scale }) {
       cy: -h / 2,
       rx: w / 2,
       ry: w / 9,
-      fill: color || 'var(--hole)',
+      fill: color || emptyFill,
       'fill-opacity': failed ? 0.25 : 1,
       stroke: strokeColor,
       'stroke-width': planting ? 0.9 : 1,

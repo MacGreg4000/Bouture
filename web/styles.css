@@ -1,37 +1,44 @@
+/* Palette botanique : papier chaud, feuille, terre cuite.
+   Regle de contraste : --tray (le matériel) doit rester nettement distinct de
+   --bg et de --surface, et --hole nettement distinct de --tray, sinon les bacs
+   et les tours se noient dans le fond — c'était le défaut de la version grise. */
 :root {
-  --bg: #f4f6f3;
-  --surface: #ffffff;
-  --surface-2: #eef1ec;
-  --text: #1d2721;
-  --muted: #667066;
-  --border: #d9e0d7;
-  --accent: #1f6f3f;
-  --accent-soft: #e4f1e8;
-  --danger: #c92a2a;
-  --tray: #e9ece8;
-  --tray-edge: #c7d0c5;
-  --hole: #ffffff;
-  --lamp: #d9a406;
-  --radius: 14px;
-  --shadow: 0 10px 30px rgba(20, 40, 25, 0.12);
+  --bg: #f5f2e9;
+  --surface: #fffefa;
+  --surface-2: #efeade;
+  --text: #23302a;
+  --muted: #6e7a6c;
+  --border: #e2dccc;
+  --accent: #3d7d4e;
+  --accent-soft: #e5efe1;
+  --danger: #b34430;
+  --tray: #e9e4d5;
+  --tray-edge: #c4bba1;
+  --hole: #fcfaf4;
+  --lamp: #d99b0a;
+  --leaf: #79a86a;
+  --radius: 16px;
+  --shadow: 0 12px 32px rgba(60, 52, 30, 0.13);
+  --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121613;
-    --surface: #1b211d;
-    --surface-2: #232a25;
-    --text: #e7ede8;
-    --muted: #94a196;
-    --border: #2e372f;
-    --accent: #4caf6e;
-    --accent-soft: #1e3226;
-    --danger: #ff6b6b;
-    --tray: #262d28;
-    --tray-edge: #38423a;
-    --hole: #171c18;
-    --lamp: #ffd43b;
-    --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    --bg: #151a14;
+    --surface: #1d231b;
+    --surface-2: #283024;
+    --text: #e8eee3;
+    --muted: #98a691;
+    --border: #313a2e;
+    --accent: #6cbf7c;
+    --accent-soft: #21301f;
+    --danger: #ef7d62;
+    --tray: #394435;
+    --tray-edge: #59684c;
+    --hole: #222a20;
+    --lamp: #ffd24a;
+    --leaf: #7fae6d;
+    --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
   }
 }
 
@@ -56,6 +63,12 @@ body {
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-text-size-adjust: 100%;
   padding-bottom: env(safe-area-inset-bottom);
+  min-height: 100vh;
+  /* Deux halos très diffus : ça réchauffe le fond sans motif qui distrairait. */
+  background-image:
+    radial-gradient(ellipse 70% 45% at 12% -5%, color-mix(in srgb, var(--leaf) 16%, transparent), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 95% 8%, color-mix(in srgb, var(--lamp) 11%, transparent), transparent 70%);
+  background-attachment: fixed;
 }
 
 /* ------------------------------------------------------------- barre haute */
@@ -70,8 +83,11 @@ body {
   gap: 10px;
   padding: 10px 12px;
   padding-top: calc(10px + env(safe-area-inset-top));
+  /* Repli d'abord : sans color-mix, la barre resterait sans fond du tout. */
   background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 88%, var(--leaf));
   border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
 }
 
 .topbar__title {
@@ -86,8 +102,10 @@ body {
 }
 
 .topbar__title select {
-  font-size: 16px;
-  font-weight: 650;
+  font-family: var(--serif);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--text);
   background: transparent;
   border: 0;
@@ -169,9 +187,10 @@ main {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 5px 11px;
+  padding: 5px 12px;
   font-size: 13px;
   color: var(--muted);
+  box-shadow: 0 1px 2px rgba(60, 52, 30, 0.06);
 }
 
 .stat b {
@@ -180,10 +199,17 @@ main {
 
 .board__plan {
   background: var(--surface);
+  background:
+    linear-gradient(
+      170deg,
+      color-mix(in srgb, var(--surface) 92%, var(--leaf)),
+      var(--surface) 55%
+    );
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 10px;
+  padding: 12px;
   overflow-x: auto;
+  box-shadow: var(--shadow);
 }
 
 /* Une tour est etroite : on resserre la carte pour eviter un grand vide. */
@@ -484,7 +510,9 @@ main {
 }
 
 .sheet__head h2 {
-  font-size: 17px;
+  font-family: var(--serif);
+  font-size: 21px;
+  font-weight: 600;
   margin: 0;
 }
 
