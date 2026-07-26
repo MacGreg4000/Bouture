@@ -6,11 +6,21 @@
     <meta name="theme-color" content="#1f6f3f" />
     <title>Bac à boutures</title>
     <!-- Bump ?v= a chaque mise a jour du CSS/JS pour forcer les navigateurs deja ouverts. -->
-    <link rel="stylesheet" href="/styles.css?v=18" />
+    <link rel="stylesheet" href="/styles.css?v=19" />
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>"
     />
+    <script>
+      // Avant le premier rendu, pour éviter un flash du mauvais thème :
+      // 'system' (ou rien) laisse la main à prefers-color-scheme.
+      (function () {
+        var saved = localStorage.getItem('bouture.theme');
+        if (saved === 'light' || saved === 'dark') {
+          document.documentElement.dataset.theme = saved;
+        }
+      })();
+    </script>
   </head>
   <body>
     <header class="topbar">
@@ -19,6 +29,13 @@
         <select id="tray-select" aria-label="Bac"></select>
       </div>
       <div class="topbar__actions">
+        <button
+          type="button"
+          class="btn btn--icon"
+          id="theme-toggle"
+          title="Thème : suit l'appareil"
+          aria-label="Changer de thème"
+        ></button>
         <button type="button" class="btn btn--ghost" id="btn-tray-menu" title="Gérer les bacs">Bacs</button>
         <button type="button" class="btn btn--ghost" id="btn-legend" title="Légende">Légende</button>
       </div>
@@ -192,6 +209,6 @@
     <div class="tip" id="tip" role="tooltip" hidden></div>
     <div class="toast" id="toast" hidden></div>
 
-    <script type="module" src="/app.js?v=18"></script>
+    <script type="module" src="/app.js?v=19"></script>
   </body>
 </html>

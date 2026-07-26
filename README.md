@@ -37,6 +37,9 @@ Pensée pour être consultée et remplie depuis un smartphone, sur le réseau lo
   que la machine à boutures, une grille en quinconce sur mesure, une tour
   d'étages × pots au choix, ou la copie d'un existant.
 - **Aucun login** : prévu pour un usage sur réseau local uniquement (voir Sécurité).
+- **Thème clair/sombre** : le bouton ☀️/🌙/🌓 en haut à droite bascule entre
+  clair, sombre et « suit l'appareil » (par défaut). Le choix est mémorisé
+  sur l'appareil, indépendamment des réglages système.
 
 ## Installation sur le serveur Ubuntu
 

@@ -42,6 +42,46 @@
   }
 }
 
+/* Bouton de bascule (voir #theme-toggle dans app.js) : ces deux blocs ont une
+   spécificité plus élevée que le :root ci-dessus (attribut en plus du
+   pseudo-classe), donc ils l'emportent quel que soit l'ordre dans la feuille,
+   y compris sur celui posé par la media query prefers-color-scheme. */
+:root[data-theme="light"] {
+  --bg: #f5f2e9;
+  --surface: #fffefa;
+  --surface-2: #efeade;
+  --text: #23302a;
+  --muted: #6e7a6c;
+  --border: #e2dccc;
+  --accent: #3d7d4e;
+  --accent-soft: #e5efe1;
+  --danger: #b34430;
+  --tray: #e9e4d5;
+  --tray-edge: #c4bba1;
+  --hole: #fcfaf4;
+  --lamp: #d99b0a;
+  --leaf: #79a86a;
+  --shadow: 0 12px 32px rgba(60, 52, 30, 0.13);
+}
+
+:root[data-theme="dark"] {
+  --bg: #151a14;
+  --surface: #1d231b;
+  --surface-2: #283024;
+  --text: #e8eee3;
+  --muted: #98a691;
+  --border: #313a2e;
+  --accent: #6cbf7c;
+  --accent-soft: #21301f;
+  --danger: #ef7d62;
+  --tray: #394435;
+  --tray-edge: #59684c;
+  --hole: #222a20;
+  --lamp: #ffd24a;
+  --leaf: #7fae6d;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
 * {
   box-sizing: border-box;
 }

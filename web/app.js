@@ -1545,6 +1545,37 @@ $('tray-form').addEventListener(
   }),
 );
 
+/* -------------------------------------------------------------------- thème */
+
+const THEME_CYCLE = ['system', 'light', 'dark'];
+const THEME_ICON = { system: '🌓', light: '☀️', dark: '🌙' };
+const THEME_TITLE = {
+  system: "Thème : suit l'appareil",
+  light: 'Thème : clair',
+  dark: 'Thème : sombre',
+};
+
+function applyTheme(theme) {
+  if (theme === 'system') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+  const button = $('theme-toggle');
+  button.textContent = THEME_ICON[theme];
+  button.title = THEME_TITLE[theme];
+}
+
+function setTheme(theme) {
+  localStorage.setItem('bouture.theme', theme);
+  applyTheme(theme);
+}
+
+$('theme-toggle').addEventListener('click', () => {
+  const current = document.documentElement.dataset.theme ?? 'system';
+  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(current) + 1) % THEME_CYCLE.length];
+  setTheme(next);
+});
+
+applyTheme(document.documentElement.dataset.theme ?? 'system');
+
 /* ---------------------------------------------------------------- démarrage */
 
 run(load)();
