@@ -1,43 +1,52 @@
-/* Palette botanique : papier chaud, feuille, terre cuite.
+/* Palette « carnet de jardinage / sachet de graines vintage » : kraft, vert
+   vif, terre cuite, moutarde — plus vivante et moins « appli de gestion »
+   que la version botanique pastel precedente.
    Regle de contraste : --tray (le matériel) doit rester nettement distinct de
    --bg et de --surface, et --hole nettement distinct de --tray, sinon les bacs
-   et les tours se noient dans le fond — c'était le défaut de la version grise. */
+   et les tours se noient dans le fond. */
 :root {
-  --bg: #f5f2e9;
-  --surface: #fffefa;
-  --surface-2: #efeade;
-  --text: #23302a;
-  --muted: #6e7a6c;
-  --border: #e2dccc;
-  --accent: #3d7d4e;
-  --accent-soft: #e5efe1;
-  --danger: #b34430;
-  --tray: #e9e4d5;
-  --tray-edge: #c4bba1;
-  --hole: #fcfaf4;
-  --lamp: #d99b0a;
-  --leaf: #79a86a;
+  --bg: #f7ecd3;
+  --surface: #fffaee;
+  --surface-2: #efe0b8;
+  --text: #3a2a18;
+  --muted: #8a7350;
+  --border: #ddc794;
+  --accent: #4f8a3a;
+  --accent-soft: #e3edc9;
+  --danger: #c1440e;
+  --tray: #ecdcae;
+  --tray-edge: #b8945a;
+  --hole: #fffaf0;
+  --lamp: #e0a52a;
+  --leaf: #6b9c42;
+  --terracotta: #c1622a;
+  --mustard: #d9a441;
   --radius: 16px;
-  --shadow: 0 12px 32px rgba(60, 52, 30, 0.13);
-  --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --shadow: 0 12px 32px rgba(58, 42, 20, 0.16);
+  /* Pile de polices manuscrites presentes sur les systemes courants (Windows,
+     macOS) : evite d'aller chercher une police en ligne pour une appli
+     auto-hebergee sur reseau local. */
+  --label: "Segoe Print", "Bradley Hand", "Chalkboard SE", "Comic Sans MS", "Apple Chancery", cursive;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #151a14;
-    --surface: #1d231b;
-    --surface-2: #283024;
-    --text: #e8eee3;
-    --muted: #98a691;
-    --border: #313a2e;
-    --accent: #6cbf7c;
-    --accent-soft: #21301f;
-    --danger: #ef7d62;
-    --tray: #394435;
-    --tray-edge: #59684c;
-    --hole: #222a20;
-    --lamp: #ffd24a;
-    --leaf: #7fae6d;
+    --bg: #1e160d;
+    --surface: #271d12;
+    --surface-2: #332612;
+    --text: #f1e2c0;
+    --muted: #b39b71;
+    --border: #43331c;
+    --accent: #8fc45c;
+    --accent-soft: #2c3a1a;
+    --danger: #e2794f;
+    --tray: #4a3a20;
+    --tray-edge: #715a30;
+    --hole: #241a10;
+    --lamp: #f2c14e;
+    --leaf: #8fc45c;
+    --terracotta: #e0895a;
+    --mustard: #eec36a;
     --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
   }
 }
@@ -47,38 +56,42 @@
    pseudo-classe), donc ils l'emportent quel que soit l'ordre dans la feuille,
    y compris sur celui posé par la media query prefers-color-scheme. */
 :root[data-theme="light"] {
-  --bg: #f5f2e9;
-  --surface: #fffefa;
-  --surface-2: #efeade;
-  --text: #23302a;
-  --muted: #6e7a6c;
-  --border: #e2dccc;
-  --accent: #3d7d4e;
-  --accent-soft: #e5efe1;
-  --danger: #b34430;
-  --tray: #e9e4d5;
-  --tray-edge: #c4bba1;
-  --hole: #fcfaf4;
-  --lamp: #d99b0a;
-  --leaf: #79a86a;
-  --shadow: 0 12px 32px rgba(60, 52, 30, 0.13);
+  --bg: #f7ecd3;
+  --surface: #fffaee;
+  --surface-2: #efe0b8;
+  --text: #3a2a18;
+  --muted: #8a7350;
+  --border: #ddc794;
+  --accent: #4f8a3a;
+  --accent-soft: #e3edc9;
+  --danger: #c1440e;
+  --tray: #ecdcae;
+  --tray-edge: #b8945a;
+  --hole: #fffaf0;
+  --lamp: #e0a52a;
+  --leaf: #6b9c42;
+  --terracotta: #c1622a;
+  --mustard: #d9a441;
+  --shadow: 0 12px 32px rgba(58, 42, 20, 0.16);
 }
 
 :root[data-theme="dark"] {
-  --bg: #151a14;
-  --surface: #1d231b;
-  --surface-2: #283024;
-  --text: #e8eee3;
-  --muted: #98a691;
-  --border: #313a2e;
-  --accent: #6cbf7c;
-  --accent-soft: #21301f;
-  --danger: #ef7d62;
-  --tray: #394435;
-  --tray-edge: #59684c;
-  --hole: #222a20;
-  --lamp: #ffd24a;
-  --leaf: #7fae6d;
+  --bg: #1e160d;
+  --surface: #271d12;
+  --surface-2: #332612;
+  --text: #f1e2c0;
+  --muted: #b39b71;
+  --border: #43331c;
+  --accent: #8fc45c;
+  --accent-soft: #2c3a1a;
+  --danger: #e2794f;
+  --tray: #4a3a20;
+  --tray-edge: #715a30;
+  --hole: #241a10;
+  --lamp: #f2c14e;
+  --leaf: #8fc45c;
+  --terracotta: #e0895a;
+  --mustard: #eec36a;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
 }
 
@@ -104,10 +117,15 @@ body {
   -webkit-text-size-adjust: 100%;
   padding-bottom: env(safe-area-inset-bottom);
   min-height: 100vh;
-  /* Deux halos très diffus : ça réchauffe le fond sans motif qui distrairait. */
+  /* Deux halos très diffus + un grain de papier tres discret (bruit SVG en
+     donnee-uri, aucune requete externe) : ça donne un fond papier plutot
+     qu'un aplat uni, sans motif qui distrairait de la lecture. */
   background-image:
-    radial-gradient(ellipse 70% 45% at 12% -5%, color-mix(in srgb, var(--leaf) 16%, transparent), transparent 70%),
-    radial-gradient(ellipse 60% 40% at 95% 8%, color-mix(in srgb, var(--lamp) 11%, transparent), transparent 70%);
+    radial-gradient(ellipse 70% 45% at 12% -5%, color-mix(in srgb, var(--leaf) 18%, transparent), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 95% 8%, color-mix(in srgb, var(--mustard) 14%, transparent), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-size: auto, auto, 180px 180px;
   background-attachment: fixed;
 }
 
@@ -126,7 +144,9 @@ body {
   /* Repli d'abord : sans color-mix, la barre resterait sans fond du tout. */
   background: var(--surface);
   background: color-mix(in srgb, var(--surface) 88%, var(--leaf));
-  border-bottom: 1px solid var(--border);
+  /* Trait pointille plutot qu'un plein : petit clin d'oeil au bord perfore
+     d'un sachet de graines. */
+  border-bottom: 1.5px dashed var(--tray-edge);
   backdrop-filter: blur(8px);
 }
 
@@ -138,13 +158,14 @@ body {
 }
 
 .topbar__leaf {
-  font-size: 20px;
+  display: flex;
+  color: var(--accent);
 }
 
 .topbar__title select {
-  font-family: var(--serif);
-  font-size: 19px;
-  font-weight: 600;
+  font-family: var(--label);
+  font-size: 21px;
+  font-weight: 400;
   letter-spacing: 0.01em;
   color: var(--text);
   background: transparent;
@@ -166,7 +187,7 @@ body {
 .btn {
   font: inherit;
   border-radius: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--tray-edge);
   background: var(--surface);
   color: var(--text);
   padding: 8px 12px;
@@ -238,6 +259,7 @@ main {
 }
 
 .board__plan {
+  position: relative;
   background: var(--surface);
   background:
     linear-gradient(
@@ -250,6 +272,17 @@ main {
   padding: 12px;
   overflow-x: auto;
   box-shadow: var(--shadow);
+}
+
+/* Liseré perforé, comme sur un sachet de graines, juste a l'interieur du
+   bord de la carte. */
+.board__plan::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1.5px dashed color-mix(in srgb, var(--terracotta) 55%, transparent);
+  border-radius: calc(var(--radius) - 6px);
+  pointer-events: none;
 }
 
 /* Une tour est etroite : on resserre la carte pour eviter un grand vide.
@@ -463,6 +496,11 @@ main {
   font-size: 14px;
 }
 
+.quickfill__can {
+  flex: none;
+  color: var(--accent);
+}
+
 .quickfill__dot {
   width: 14px;
   height: 14px;
@@ -580,7 +618,8 @@ main {
   width: 40px;
   height: 4px;
   border-radius: 2px;
-  background: var(--border);
+  background: var(--mustard);
+  opacity: 0.6;
   margin: 4px auto 10px;
 }
 
@@ -593,10 +632,18 @@ main {
 }
 
 .sheet__head h2 {
-  font-family: var(--serif);
-  font-size: 21px;
-  font-weight: 600;
+  font-family: var(--label);
+  font-size: 24px;
+  font-weight: 400;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sheet__head h2 svg {
+  flex: none;
+  color: var(--accent);
 }
 
 .sheet__hint {
