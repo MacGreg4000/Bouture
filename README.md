@@ -43,7 +43,10 @@ Pensée pour être consultée et remplie depuis un smartphone, sur le réseau lo
 - **Habillage « carnet de jardinage »** : palette kraft/vert vif/terre cuite
   façon sachet de graines vintage, titres en police manuscrite, fond papier
   à grain léger, bordure perforée façon étiquette autour du plan, et quelques
-  icônes dessinées à la main (pousse, arrosoir, pot).
+  icônes dessinées à la main (pousse, arrosoir, pot). Sur grand écran, un
+  liseré de vigne/fleur illustré occupe les marges ; de petites feuilles
+  dérivent doucement en fond ; les panneaux s'ouvrent avec un léger rebond.
+  Tout ça respecte `prefers-reduced-motion` (animations coupées si demandé).
 
 ## Installation sur le serveur Ubuntu
 
