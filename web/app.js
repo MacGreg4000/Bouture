@@ -32,7 +32,13 @@ const state = {
   selectedCellId: null,
   quickfillVarietyId: null,
   towerAngle: 0,
+  towerZoom: 1, // 1 = toute la tour visible
+  towerPanY: 0, // décalage vertical de la fenêtre, en unités du viewBox
+  towerNaturalBox: null, // {x,y,w,h} calculé par renderTower, base des calculs de zoom
 };
+
+const TOWER_MIN_ZOOM = 1;
+const TOWER_MAX_ZOOM = 5;
 
 /** « trou » pour un bac à plat, « pot » pour une tour. */
 const cellNoun = () => (state.tray?.kind === 'tower' ? 'pot' : 'trou');
@@ -128,12 +134,19 @@ const cellById = (id) => state.cells.find((c) => c.id === id) ?? null;
 
 async function load(trayId = null) {
   const target = trayId ?? state.tray?.id ?? Number(localStorage.getItem('bouture.tray')) ?? null;
+  const previousTrayId = state.tray?.id ?? null;
   const data = await api(`/state${target ? `?tray=${target}` : ''}`);
   state.trays = data.trays;
   state.tray = data.tray;
   state.cells = data.cells;
   state.varieties = data.varieties;
   state.holeRadius = data.holeRadius;
+  if (state.tray && state.tray.id !== previousTrayId) {
+    // Changer de bac ne doit pas garder la rotation/le zoom du precedent.
+    state.towerAngle = 0;
+    state.towerZoom = 1;
+    state.towerPanY = 0;
+  }
   if (state.tray) localStorage.setItem('bouture.tray', String(state.tray.id));
   renderAll();
 }
@@ -250,8 +263,13 @@ function renderPlan() {
   const tower = state.tray.kind === 'tower';
   svg.classList.toggle('plan--tower', tower);
   $('rotator').hidden = !tower;
-  if (tower) renderTower(svg);
-  else renderFlatPlan(svg);
+  $('towerzoom').hidden = !tower;
+  if (tower) {
+    renderTower(svg);
+    updateTowerZoomButtons();
+  } else {
+    renderFlatPlan(svg);
+  }
 }
 
 function renderFlatPlan(svg) {
@@ -459,7 +477,9 @@ function renderTower(svg) {
   const baseTop = lastTierY + 28;
   const totalH = baseTop + TOWER.baseH + 18;
   // De la place au-dessus de la tour pour les numéros de colonne flottants.
-  svg.setAttribute('viewBox', `-100 ${-TOWER.badgeTop} 200 ${totalH + TOWER.badgeTop}`);
+  // Le viewBox réel (avec zoom/pan) est posé à la fin de la fonction par
+  // applyTowerView, une fois tous les éléments ajoutés.
+  state.towerNaturalBox = { x: -100, y: -TOWER.badgeTop, w: 200, h: totalH + TOWER.badgeTop };
 
   // Ombrage de cylindre, en noir/blanc translucide pour marcher dans les deux
   // thèmes : un dégradé sur une couleur fixe serait faux en clair ou en sombre.
@@ -543,6 +563,30 @@ function renderTower(svg) {
       ),
     );
   }
+
+  applyTowerView(svg);
+}
+
+/**
+ * Applique le zoom/pan courants au viewBox de la tour, en repartant de la
+ * "boite naturelle" (tour entiere visible) calculee par renderTower. Le zoom
+ * est uniforme sur les deux axes ; l'exploration horizontale se fait par
+ * rotation plutot que par un panoramique, donc le centre horizontal reste fixe.
+ */
+function applyTowerView(svg) {
+  const box = state.towerNaturalBox;
+  if (!box) return;
+  const zoom = state.towerZoom;
+  const viewW = box.w / zoom;
+  const viewH = box.h / zoom;
+  const maxPanY = Math.max(0, (box.h - viewH) / 2);
+  state.towerPanY = Math.max(-maxPanY, Math.min(maxPanY, state.towerPanY));
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2 + state.towerPanY;
+  svg.setAttribute(
+    'viewBox',
+    `${(cx - viewW / 2).toFixed(2)} ${(cy - viewH / 2).toFixed(2)} ${viewW.toFixed(2)} ${viewH.toFixed(2)}`,
+  );
 }
 
 /**
@@ -741,7 +785,7 @@ function renderPot({ cell, x, y, depth, scale }) {
   return group;
 }
 
-/* ------------------------------------------------------- rotation de la tour */
+/* ------------------------------------------------- rotation, zoom et pan de la tour */
 
 function setTowerAngle(degrees) {
   state.towerAngle = ((degrees % 360) + 360) % 360;
@@ -749,21 +793,116 @@ function setTowerAngle(degrees) {
   renderPlan();
 }
 
-let towerDrag = null;
+/**
+ * Zoome la tour en gardant le point svg situé à `clientY` immobile à l'écran
+ * (comportement « zoom sous le curseur/les doigts »). `factor` est relatif au
+ * zoom courant : >1 rapproche, <1 éloigne.
+ */
+function zoomTowerAround(clientY, factor) {
+  const svg = $('plan');
+  const box = state.towerNaturalBox;
+  if (!box) return;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return;
+  const point = svg.createSVGPoint();
+  point.y = clientY;
+  const svgPoint = point.matrixTransform(ctm.inverse());
+
+  const oldZoom = state.towerZoom;
+  const newZoom = Math.max(TOWER_MIN_ZOOM, Math.min(TOWER_MAX_ZOOM, oldZoom * factor));
+  if (Math.abs(newZoom - oldZoom) < 1e-6) return;
+
+  const oldViewH = box.h / oldZoom;
+  const newViewH = box.h / newZoom;
+  const oldTop = box.y + box.h / 2 + state.towerPanY - oldViewH / 2;
+  const fraction = (svgPoint.y - oldTop) / oldViewH;
+
+  state.towerZoom = newZoom;
+  state.towerPanY = svgPoint.y - fraction * newViewH + newViewH / 2 - (box.y + box.h / 2);
+  renderPlan();
+  updateTowerZoomButtons();
+}
+
+/** Fait défiler la fenêtre le long de la tour, en suivant le doigt/curseur. */
+function panTowerBy(deltaClientY) {
+  const svg = $('plan');
+  const ctm = svg.getScreenCTM();
+  if (!ctm || !ctm.d) return;
+  // Le contenu doit suivre le doigt (comme un défilement tactile classique) :
+  // glisser vers le bas doit révéler ce qu'il y a au-dessus.
+  state.towerPanY -= deltaClientY / ctm.d;
+  renderPlan();
+}
+
+function resetTowerView() {
+  state.towerZoom = 1;
+  state.towerPanY = 0;
+  renderPlan();
+  updateTowerZoomButtons();
+}
+
+function updateTowerZoomButtons() {
+  $('zoom-out').disabled = state.towerZoom <= TOWER_MIN_ZOOM + 1e-6;
+  $('zoom-in').disabled = state.towerZoom >= TOWER_MAX_ZOOM - 1e-6;
+}
+
+const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+let towerDrag = null; // rotation + pan a un seul doigt/pointeur
+let towerPinch = null; // zoom a deux doigts
+const towerTouches = new Map(); // pointerId -> {x, y}, pour reperer le pincement
 let suppressClick = false;
+
+function startTowerPinch() {
+  const points = [...towerTouches.values()];
+  towerPinch = { lastDistance: distance(points[0], points[1]), midY: (points[0].y + points[1].y) / 2 };
+  towerDrag = null; // le pincement remplace le geste a un doigt
+  hideTooltip();
+}
 
 $('plan').addEventListener('pointerdown', (event) => {
   if (state.tray?.kind !== 'tower') return;
   // Sans ca, le navigateur demarre sa selection native et surligne tout le SVG.
   event.preventDefault();
-  towerDrag = { x: event.clientX, angle: state.towerAngle, moved: false };
+
+  if (event.pointerType === 'touch') {
+    towerTouches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (towerTouches.size === 2) {
+      startTowerPinch();
+      return;
+    }
+    if (towerTouches.size > 2) return; // un 3e doigt : on ignore
+  }
+
+  towerDrag = {
+    x: event.clientX,
+    y: event.clientY,
+    lastY: event.clientY,
+    angle: state.towerAngle,
+    moved: false,
+  };
 });
 
 $('plan').addEventListener('pointermove', (event) => {
+  if (event.pointerType === 'touch' && towerTouches.has(event.pointerId)) {
+    towerTouches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  }
+
+  if (towerPinch && towerTouches.size === 2) {
+    const points = [...towerTouches.values()];
+    const currentDistance = distance(points[0], points[1]);
+    const midY = (points[0].y + points[1].y) / 2;
+    zoomTowerAround(midY, currentDistance / towerPinch.lastDistance);
+    towerPinch.lastDistance = currentDistance;
+    suppressClick = true;
+    return;
+  }
+
   if (!towerDrag) return;
   const dx = event.clientX - towerDrag.x;
+  const dy = event.clientY - towerDrag.y;
   if (!towerDrag.moved) {
-    if (Math.abs(dx) <= 4) return; // simple clic, pas encore un glissement
+    if (Math.hypot(dx, dy) <= 4) return; // simple clic, pas encore un glissement
     towerDrag.moved = true;
     hideTooltip();
     $('plan').classList.add('is-grabbing');
@@ -773,13 +912,20 @@ $('plan').addEventListener('pointermove', (event) => {
     $('plan').setPointerCapture(event.pointerId);
   }
   setTowerAngle(towerDrag.angle + dx * 0.7);
+  // Le panoramique vertical ne sert que zoomé : a plat, il est neutralisé par
+  // le clamp de applyTowerView, autant eviter le re-rendu pour rien.
+  if (state.towerZoom > TOWER_MIN_ZOOM + 1e-6) panTowerBy(event.clientY - towerDrag.lastY);
+  towerDrag.lastY = event.clientY;
 });
 
 for (const type of ['pointerup', 'pointercancel']) {
   $('plan').addEventListener(type, (event) => {
+    if (event.pointerType === 'touch') towerTouches.delete(event.pointerId);
+    if (towerTouches.size < 2) towerPinch = null;
+
     if (!towerDrag) return;
     // Un glissement ne doit pas ouvrir la fiche du pot relache.
-    suppressClick = towerDrag.moved;
+    suppressClick = suppressClick || towerDrag.moved;
     towerDrag = null;
     $('plan').classList.remove('is-grabbing');
     if ($('plan').hasPointerCapture?.(event.pointerId)) {
@@ -788,6 +934,22 @@ for (const type of ['pointerup', 'pointercancel']) {
   });
 }
 
+// Molette : zoom centre sur le curseur, comme une carte.
+$('plan').addEventListener(
+  'wheel',
+  (event) => {
+    if (state.tray?.kind !== 'tower') return;
+    event.preventDefault();
+    zoomTowerAround(event.clientY, event.deltaY < 0 ? 1.15 : 1 / 1.15);
+  },
+  { passive: false },
+);
+
+// Double-clic/double-tap : revient a la vue d'ensemble.
+$('plan').addEventListener('dblclick', () => {
+  if (state.tray?.kind === 'tower') resetTowerView();
+});
+
 $('rot-range').addEventListener('input', (event) => setTowerAngle(Number(event.target.value)));
 $('rot-left').addEventListener('click', () =>
   setTowerAngle(state.towerAngle - 360 / towerGeometry().potsPerTier),
@@ -795,6 +957,16 @@ $('rot-left').addEventListener('click', () =>
 $('rot-right').addEventListener('click', () =>
   setTowerAngle(state.towerAngle + 360 / towerGeometry().potsPerTier),
 );
+
+$('zoom-out').addEventListener('click', () => {
+  const rect = $('plan').getBoundingClientRect();
+  zoomTowerAround(rect.top + rect.height / 2, 1 / 1.4);
+});
+$('zoom-in').addEventListener('click', () => {
+  const rect = $('plan').getBoundingClientRect();
+  zoomTowerAround(rect.top + rect.height / 2, 1.4);
+});
+$('zoom-reset').addEventListener('click', resetTowerView);
 
 // Bascule paysage <-> portrait : on redessine quand le seuil est franchi.
 let wasPortrait = isPortrait();
@@ -878,9 +1050,14 @@ function renderQuickfill() {
     bar.hidden = true;
     const tower = state.tray?.kind === 'tower';
     const what = tower ? 'un pot' : 'un trou';
+    const towerHint = tower
+      ? canHover()
+        ? ' Fais glisser la tour pour la tourner, molette pour zoomer.'
+        : ' Fais glisser la tour pour la tourner, pince pour zoomer.'
+      : '';
     $('hint').textContent = canHover()
-      ? `Survole ${what} pour voir son contenu, clique pour le modifier.${tower ? ' Fais glisser la tour pour la tourner.' : ''}`
-      : `Touche ${what} pour renseigner ce que tu y as mis.${tower ? ' Fais glisser la tour pour la tourner.' : ''}`;
+      ? `Survole ${what} pour voir son contenu, clique pour le modifier.${towerHint}`
+      : `Touche ${what} pour renseigner ce que tu y as mis.${towerHint}`;
     return;
   }
   bar.hidden = false;

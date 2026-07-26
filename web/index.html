@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#1f6f3f" />
     <title>Bac à boutures</title>
     <!-- Bump ?v= a chaque mise a jour du CSS/JS pour forcer les navigateurs deja ouverts. -->
-    <link rel="stylesheet" href="/styles.css?v=16" />
+    <link rel="stylesheet" href="/styles.css?v=17" />
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>"
@@ -42,6 +42,11 @@
             aria-label="Rotation de la tour"
           />
           <button type="button" class="btn btn--small" id="rot-right" aria-label="Tourner vers la droite">▶</button>
+        </div>
+        <div class="towerzoom" id="towerzoom" hidden>
+          <button type="button" class="btn btn--small" id="zoom-out" aria-label="Dézoomer">−</button>
+          <button type="button" class="btn btn--small" id="zoom-reset" aria-label="Revenir à la vue d'ensemble">Vue d'ensemble</button>
+          <button type="button" class="btn btn--small" id="zoom-in" aria-label="Zoomer">+</button>
         </div>
         <div class="board__quickfill" id="quickfill" hidden>
           <span class="quickfill__dot" id="quickfill-dot"></span>
@@ -187,6 +192,6 @@
     <div class="tip" id="tip" role="tooltip" hidden></div>
     <div class="toast" id="toast" hidden></div>
 
-    <script type="module" src="/app.js?v=16"></script>
+    <script type="module" src="/app.js?v=17"></script>
   </body>
 </html>

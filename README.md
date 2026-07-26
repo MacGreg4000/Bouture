@@ -29,6 +29,10 @@ Pensée pour être consultée et remplie depuis un smartphone, sur le réseau lo
   où l'on se trouve. Un étage sur deux étant décalé d'un demi-pas, il y a deux fois
   plus de colonnes que de pots par étage (8 colonnes pour 4 pots par étage), et
   chaque pot est repéré par « Étage 3 · colonne 5 ».
+  On peut aussi **zoomer** pour s'approcher des pots (molette, pincement à deux
+  doigts, ou les boutons − / +), et glisser verticalement une fois zoomé pour
+  naviguer entre les étages ; un double-clic (ou double-tap) revient d'un coup à
+  la vue d'ensemble.
 - **Plusieurs bacs** : on peut ajouter d'autres bacs et tours, avec le même plan
   que la machine à boutures, une grille en quinconce sur mesure, une tour
   d'étages × pots au choix, ou la copie d'un existant.

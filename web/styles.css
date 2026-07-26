@@ -330,8 +330,10 @@ main {
 }
 
 .plan--tower {
-  /* Le glissement horizontal fait tourner la tour, le vertical fait defiler. */
-  touch-action: pan-y;
+  /* On gere nous-memes rotation, zoom et panoramique (molette, glissement,
+     pincement) : touch-action doit donc valoir none, sinon le navigateur
+     ferait defiler la page ou zoomerait la page a notre place. */
+  touch-action: none;
   cursor: grab;
 }
 
@@ -386,6 +388,23 @@ main {
   border: 0;
   accent-color: var(--accent);
   touch-action: none;
+}
+
+.towerzoom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.towerzoom .btn {
+  min-width: 40px;
+}
+
+.towerzoom .btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .board__quickfill {
