@@ -23,10 +23,6 @@
   --mustard: #d9a441;
   --radius: 16px;
   --shadow: 0 12px 32px rgba(58, 42, 20, 0.16);
-  /* Pile de polices manuscrites presentes sur les systemes courants (Windows,
-     macOS) : evite d'aller chercher une police en ligne pour une appli
-     auto-hebergee sur reseau local. */
-  --label: "Segoe Print", "Bradley Hand", "Chalkboard SE", "Comic Sans MS", "Apple Chancery", cursive;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -104,144 +100,6 @@
   display: none !important;
 }
 
-/* --------------------------------------------------------- décor de fond */
-
-/* Liseré de vigne/feuilles dans les marges laterales, visible seulement
-   quand la fenetre est assez large pour qu'il y ait de la place (au-dela des
-   1100px de `main`). Technique : un masque CSS (silhouette blanche en
-   donnee-uri) recolore automatiquement selon le theme, contrairement a des
-   couleurs figees dans le SVG lui-meme qui ne suivraient pas le bouton
-   clair/sombre. */
-.garden-border {
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  width: clamp(0px, calc((100vw - 1100px) / 2 - 16px), 120px);
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.5;
-  background: linear-gradient(180deg, var(--leaf), var(--mustard) 45%, var(--terracotta) 85%);
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'%3E%3Cpath d='M50 220 C60 180 40 145 50 108 C60 70 40 35 50 0' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Cpath d='M50 150 C20 145 15 118 35 108 C45 116 50 134 50 150 Z' fill='%23fff'/%3E%3Cpath d='M50 78 C80 73 85 46 65 36 C55 44 50 62 50 78 Z' fill='%23fff'/%3E%3Ccircle cx='50' cy='15' r='7' fill='%23fff'/%3E%3Cellipse cx='50' cy='4' rx='5' ry='9' fill='%23fff'/%3E%3Cellipse cx='50' cy='26' rx='5' ry='9' fill='%23fff'/%3E%3Cellipse cx='38' cy='15' rx='9' ry='5' fill='%23fff'/%3E%3Cellipse cx='62' cy='15' rx='9' ry='5' fill='%23fff'/%3E%3C/svg%3E");
-  mask-repeat: repeat-y;
-  mask-size: 90px 220px;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'%3E%3Cpath d='M50 220 C60 180 40 145 50 108 C60 70 40 35 50 0' fill='none' stroke='%23fff' stroke-width='4'/%3E%3Cpath d='M50 150 C20 145 15 118 35 108 C45 116 50 134 50 150 Z' fill='%23fff'/%3E%3Cpath d='M50 78 C80 73 85 46 65 36 C55 44 50 62 50 78 Z' fill='%23fff'/%3E%3Ccircle cx='50' cy='15' r='7' fill='%23fff'/%3E%3Cellipse cx='50' cy='4' rx='5' ry='9' fill='%23fff'/%3E%3Cellipse cx='50' cy='26' rx='5' ry='9' fill='%23fff'/%3E%3Cellipse cx='38' cy='15' rx='9' ry='5' fill='%23fff'/%3E%3Cellipse cx='62' cy='15' rx='9' ry='5' fill='%23fff'/%3E%3C/svg%3E");
-  -webkit-mask-repeat: repeat-y;
-  -webkit-mask-size: 90px 220px;
-}
-
-.garden-border--left {
-  left: 0;
-}
-
-.garden-border--right {
-  right: 0;
-  transform: scaleX(-1);
-}
-
-@media (max-width: 1300px) {
-  /* Pas assez de marge pour que ce soit joli plutot qu'ecrase : autant le
-     masquer proprement. */
-  .garden-border {
-    display: none;
-  }
-}
-
-/* Petits elements qui derivent tres lentement en fond, pour donner un peu de
-   vie sans distraire de la lecture — desactives si l'utilisateur prefere
-   moins d'animations. */
-.ambient {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.ambient__petal {
-  position: absolute;
-  opacity: 0;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .ambient__petal {
-    animation: drift linear infinite;
-  }
-}
-
-/* Position, couleur et trajectoire de chaque petale : variees a la main
-   plutot que generees, pour un effet organique (pas de grille visible). */
-.ambient__petal:nth-child(1) {
-  left: 6%;
-  top: 85%;
-  color: var(--leaf);
-  --drift-x: 60px;
-  --drift-y: -90vh;
-  --drift-r: 140deg;
-  animation-duration: 26s;
-  animation-delay: -2s;
-}
-
-.ambient__petal:nth-child(2) {
-  left: 22%;
-  top: 95%;
-  color: var(--mustard);
-  --drift-x: -40px;
-  --drift-y: -95vh;
-  --drift-r: -110deg;
-  animation-duration: 32s;
-  animation-delay: -14s;
-}
-
-.ambient__petal:nth-child(3) {
-  left: 78%;
-  top: 90%;
-  color: var(--terracotta);
-  --drift-x: -70px;
-  --drift-y: -100vh;
-  --drift-r: 200deg;
-  animation-duration: 29s;
-  animation-delay: -8s;
-}
-
-.ambient__petal:nth-child(4) {
-  left: 90%;
-  top: 80%;
-  color: var(--accent);
-  --drift-x: 50px;
-  --drift-y: -85vh;
-  --drift-r: -160deg;
-  animation-duration: 23s;
-  animation-delay: -19s;
-}
-
-.ambient__petal:nth-child(5) {
-  left: 50%;
-  top: 98%;
-  color: var(--leaf);
-  --drift-x: -30px;
-  --drift-y: -105vh;
-  --drift-r: 120deg;
-  animation-duration: 35s;
-  animation-delay: -5s;
-}
-
-@keyframes drift {
-  0% {
-    transform: translate(0, 0) rotate(0deg);
-    opacity: 0;
-  }
-  8% {
-    opacity: 0.5;
-  }
-  92% {
-    opacity: 0.5;
-  }
-  100% {
-    transform: translate(var(--drift-x, 40px), var(--drift-y, -140px)) rotate(var(--drift-r, 90deg));
-    opacity: 0;
-  }
-}
-
 html,
 body {
   margin: 0;
@@ -282,9 +140,7 @@ body {
   /* Repli d'abord : sans color-mix, la barre resterait sans fond du tout. */
   background: var(--surface);
   background: color-mix(in srgb, var(--surface) 88%, var(--leaf));
-  /* Trait pointille plutot qu'un plein : petit clin d'oeil au bord perfore
-     d'un sachet de graines. */
-  border-bottom: 1.5px dashed var(--tray-edge);
+  border-bottom: 1px solid var(--border);
   backdrop-filter: blur(8px);
 }
 
@@ -298,30 +154,12 @@ body {
 .topbar__leaf {
   display: flex;
   color: var(--accent);
-  transform-origin: 50% 100%;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .topbar__leaf {
-    animation: sway 4.5s ease-in-out infinite;
-  }
-}
-
-@keyframes sway {
-  0%,
-  100% {
-    transform: rotate(-5deg);
-  }
-  50% {
-    transform: rotate(5deg);
-  }
 }
 
 .topbar__title select {
-  font-family: var(--label);
-  font-size: 21px;
-  font-weight: 400;
-  letter-spacing: 0.01em;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.01em;
   color: var(--text);
   background: transparent;
   border: 0;
@@ -427,17 +265,6 @@ main {
   padding: 12px;
   overflow-x: auto;
   box-shadow: var(--shadow);
-}
-
-/* Liseré perforé, comme sur un sachet de graines, juste a l'interieur du
-   bord de la carte. */
-.board__plan::before {
-  content: "";
-  position: absolute;
-  inset: 6px;
-  border: 1.5px dashed color-mix(in srgb, var(--terracotta) 55%, transparent);
-  border-radius: calc(var(--radius) - 6px);
-  pointer-events: none;
 }
 
 /* Une tour est etroite : on resserre la carte pour eviter un grand vide.
@@ -750,14 +577,13 @@ main {
   border-radius: 18px 18px 0 0;
   padding: 8px 16px calc(20px + env(safe-area-inset-bottom));
   box-shadow: var(--shadow);
-  /* Petit rebond façon bourgeon qui s'ouvre, plutot qu'une simple glissade. */
-  animation: rise 0.32s cubic-bezier(0.34, 1.5, 0.64, 1);
+  animation: rise 0.18s ease-out;
 }
 
 @keyframes rise {
   from {
-    transform: translateY(18px) scale(0.96);
-    opacity: 0.4;
+    transform: translateY(18px);
+    opacity: 0.5;
   }
 }
 
@@ -794,9 +620,9 @@ main {
 }
 
 .sheet__head h2 {
-  font-family: var(--label);
-  font-size: 24px;
-  font-weight: 400;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0;
   display: flex;
   align-items: center;

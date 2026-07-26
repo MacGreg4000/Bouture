@@ -40,13 +40,11 @@ Pensée pour être consultée et remplie depuis un smartphone, sur le réseau lo
 - **Thème clair/sombre** : le bouton ☀️/🌙/🌓 en haut à droite bascule entre
   clair, sombre et « suit l'appareil » (par défaut). Le choix est mémorisé
   sur l'appareil, indépendamment des réglages système.
-- **Habillage « carnet de jardinage »** : palette kraft/vert vif/terre cuite
-  façon sachet de graines vintage, titres en police manuscrite, fond papier
-  à grain léger, bordure perforée façon étiquette autour du plan, et quelques
-  icônes dessinées à la main (pousse, arrosoir, pot). Sur grand écran, un
-  liseré de vigne/fleur illustré occupe les marges ; de petites feuilles
-  dérivent doucement en fond ; les panneaux s'ouvrent avec un léger rebond.
-  Tout ça respecte `prefers-reduced-motion` (animations coupées si demandé).
+- **Habillage** : palette kraft/vert vif/terre cuite, fond papier à grain
+  léger, quelques icônes dessinées à la main (pousse, arrosoir, pot). Titres
+  en sans-serif gras, sans fioriture — une première version avec police
+  manuscrite, bordures perforées et éléments flottants en fond a été retirée
+  après retour utilisateur (« ringard, années 90 »).
 
 ## Installation sur le serveur Ubuntu
 
