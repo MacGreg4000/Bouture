@@ -262,6 +262,11 @@ function renderPlan() {
 
   const tower = state.tray.kind === 'tower';
   svg.classList.toggle('plan--tower', tower);
+  // Classe posee en JS plutot que via un selecteur CSS :has() : ce dernier
+  // n'est pas supporte partout, et la regle passait alors totalement
+  // inaperçue, laissant la carte pleine largeur avec la tour minuscule au
+  // milieu, noyee dans un grand vide.
+  $('plan-wrap').classList.toggle('board__plan--tower', tower);
   $('rotator').hidden = !tower;
   $('towerzoom').hidden = !tower;
   if (tower) {

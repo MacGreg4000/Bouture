@@ -212,9 +212,13 @@ main {
   box-shadow: var(--shadow);
 }
 
-/* Une tour est etroite : on resserre la carte pour eviter un grand vide. */
-.board__plan:has(.plan--tower),
-.rotator {
+/* Une tour est etroite : on resserre la carte pour eviter un grand vide.
+   Classe posee en JS (voir app.js) plutot qu'un selecteur :has() : ce dernier
+   n'est pas supporte par tous les navigateurs, et la regle passe alors
+   totalement inapercue sans le moindre avertissement. */
+.board__plan--tower,
+.rotator,
+.towerzoom {
   max-width: 460px;
   margin-left: auto;
   margin-right: auto;
