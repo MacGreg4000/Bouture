@@ -35,6 +35,8 @@ const state = {
   towerZoom: 1, // 1 = toute la tour visible
   towerPanY: 0, // décalage vertical de la fenêtre, en unités du viewBox
   towerNaturalBox: null, // {x,y,w,h} calculé par renderTower, base des calculs de zoom
+  plants: [], // base de référence légumes/aromates (statique, chargée une fois)
+  pickingForCellId: null, // trou en cours de sélection depuis le guide, ou null
 };
 
 const TOWER_MIN_ZOOM = 1;
@@ -149,6 +151,38 @@ async function load(trayId = null) {
   }
   if (state.tray) localStorage.setItem('bouture.tray', String(state.tray.id));
   renderAll();
+}
+
+/** Base de référence légumes/aromates : statique côté serveur, on ne la charge qu'une fois. */
+async function loadPlants() {
+  if (state.plants.length) return;
+  state.plants = await api('/plants');
+}
+
+/** Enlève les accents et met en minuscules — miroir de db/plants.js côté serveur. */
+function normalizePlantName(text) {
+  return String(text)
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+/** Trouve la fiche de la base de référence correspondant le mieux à un nom de variété libre. */
+function matchPlant(varietyName) {
+  const needle = normalizePlantName(varietyName);
+  if (!needle) return null;
+  for (const plant of state.plants) {
+    if (plant.aliases.some((alias) => normalizePlantName(alias) === needle)) return plant;
+  }
+  for (const plant of state.plants) {
+    if (
+      plant.aliases.some((alias) => needle.includes(normalizePlantName(alias)) || normalizePlantName(alias).includes(needle))
+    ) {
+      return plant;
+    }
+  }
+  return null;
 }
 
 function renderAll() {
@@ -1119,6 +1153,7 @@ function openCellSheet(cell) {
   $('f-status').value = cell.planting?.status ?? 'seme';
   $('f-note').value = cell.planting?.note ?? '';
   updateAge();
+  renderPlantInfo();
 
   $('btn-clear').hidden = !cell.planting;
   $('btn-clear').textContent = `Vider le ${cellNoun()}`;
@@ -1131,6 +1166,181 @@ function updateAge() {
   const age = daysSince($('f-sown').value);
   $('f-age').textContent = age === null ? '' : age === 0 ? 'Semé aujourd’hui.' : `Semé il y a ${age} jour${age > 1 ? 's' : ''}.`;
 }
+
+const SUITABILITY_LABEL = {
+  adapted: 'Bien adaptée en tour',
+  limited: 'Possible, avec réserve',
+  not_recommended: 'Peu adaptée en tour',
+};
+
+/**
+ * Affiche, dans la fiche du trou, la fiche technique de la base de
+ * référence correspondant à la variété actuellement sélectionnée dans le
+ * formulaire — et une estimation de la fenêtre de récolte si une date de
+ * semis est renseignée.
+ */
+function renderPlantInfo() {
+  const box = $('plant-info');
+  const varietyId = $('f-variety').value;
+  const variety = varietyId ? varietyById(Number(varietyId)) : null;
+  const plant = variety ? matchPlant(variety.name) : null;
+
+  if (!plant) {
+    box.hidden = true;
+    box.innerHTML = '';
+    return;
+  }
+
+  const parts = [
+    `<span class="plant-info__badge plant-info__badge--${plant.suitability}">${SUITABILITY_LABEL[plant.suitability]}</span>`,
+    `<div class="plant-info__row"><b>Maturité</b> ${plant.daysMin}–${plant.daysMax} j après semis</div>`,
+    `<div class="plant-info__row"><b>Lumière</b> ${escapeHtml(plant.light)}</div>`,
+    `<div class="plant-info__row"><b>pH</b> ${escapeHtml(plant.ph)} · <b>EC</b> ${escapeHtml(plant.ec)}</div>`,
+  ];
+
+  const sownOn = $('f-sown').value;
+  if (sownOn) {
+    const start = Date.parse(`${sownOn}T00:00:00`);
+    if (!Number.isNaN(start)) {
+      const from = formatDate(new Date(start + plant.daysMin * 86400000).toISOString().slice(0, 10));
+      const to = formatDate(new Date(start + plant.daysMax * 86400000).toISOString().slice(0, 10));
+      parts.push(`<div class="plant-info__row"><b>Récolte estimée</b> entre le ${from} et le ${to}</div>`);
+    }
+  }
+
+  parts.push(`<p class="plant-info__tip">${escapeHtml(plant.tip)}</p>`);
+  parts.push('<p class="plant-info__disclaimer">Valeurs indicatives, à ajuster selon la variété et les conditions réelles.</p>');
+
+  box.innerHTML = parts.join('');
+  box.hidden = false;
+}
+
+const SUITABILITY_ORDER = { adapted: 0, limited: 1, not_recommended: 2 };
+
+function guideItemHtml(p, { picking }) {
+  const star = p.favorite ? '★' : '☆';
+  const chooseBtn = picking
+    ? `<button type="button" class="btn btn--small btn--primary guide__choose" data-key="${p.key}">Choisir</button>`
+    : '';
+  return `
+    <li class="guide__item">
+      <div class="guide__head">
+        <button
+          type="button"
+          class="guide__star ${p.favorite ? 'guide__star--on' : ''}"
+          data-fav-key="${p.key}"
+          aria-label="${p.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}"
+        >${star}</button>
+        <span class="guide__name">${escapeHtml(p.name)}</span>
+        <span class="plant-info__badge plant-info__badge--${p.suitability}">${SUITABILITY_LABEL[p.suitability]}</span>
+      </div>
+      <div class="guide__meta">
+        <span>${escapeHtml(p.category)}</span>
+        <span>Maturité : ${p.daysMin}–${p.daysMax} j</span>
+        <span>Lumière : ${escapeHtml(p.light)}</span>
+        <span>pH ${escapeHtml(p.ph)} · EC ${escapeHtml(p.ec)}</span>
+      </div>
+      <p class="guide__tip">${escapeHtml(p.tip)}</p>
+      ${chooseBtn}
+    </li>`;
+}
+
+/**
+ * Liste filtrable du guide des légumes. En mode « sélection » (déclenché par
+ * le bouton 🔍 de la fiche d'un trou), chaque entrée propose un bouton
+ * « Choisir » qui assigne directement le légume au trou en cours.
+ */
+function renderGuide() {
+  const list = $('guide-list');
+  const query = normalizePlantName($('guide-search').value);
+  const picking = state.pickingForCellId != null;
+
+  $('guide-picking-banner').hidden = !picking;
+  if (picking) {
+    const cell = cellById(state.pickingForCellId);
+    $('guide-picking-banner').textContent = cell
+      ? `Sélection pour ${cellLabel(cell)} : touche « Choisir » sur un légume.`
+      : '';
+  }
+
+  const matches = (p) =>
+    !query || normalizePlantName(p.name).includes(query) || p.aliases.some((a) => normalizePlantName(a).includes(query));
+  const byName = (a, b) => a.name.localeCompare(b.name, 'fr');
+  const bySuitability = (a, b) => SUITABILITY_ORDER[a.suitability] - SUITABILITY_ORDER[b.suitability] || byName(a, b);
+
+  const filtered = state.plants.filter(matches);
+  const favorites = filtered.filter((p) => p.favorite).sort(byName);
+  const rest = filtered.filter((p) => !p.favorite).sort(bySuitability);
+
+  if (!filtered.length) {
+    list.innerHTML = '<li class="guide__empty">Aucun résultat.</li>';
+    return;
+  }
+
+  const sections = [];
+  if (favorites.length) {
+    sections.push('<li class="guide__section">★ Favoris</li>');
+    sections.push(...favorites.map((p) => guideItemHtml(p, { picking })));
+    sections.push('<li class="guide__section">Tous les légumes</li>');
+  }
+  sections.push(...rest.map((p) => guideItemHtml(p, { picking })));
+
+  list.innerHTML = sections.join('');
+}
+
+const toggleFavorite = run(async (key) => {
+  const plant = state.plants.find((p) => p.key === key);
+  if (!plant) return;
+  await api(`/plants/${encodeURIComponent(key)}/favorite`, { method: plant.favorite ? 'DELETE' : 'PUT' });
+  plant.favorite = !plant.favorite;
+  renderGuide();
+});
+
+/**
+ * Trouve, ou crée si besoin, la variété de la légende correspondant à un
+ * légume du guide, puis l'assigne au trou en cours de sélection.
+ */
+const choosePlantForCell = run(async (key) => {
+  const plant = state.plants.find((p) => p.key === key);
+  const cell = cellById(state.pickingForCellId);
+  if (!plant || !cell) return;
+
+  const normalized = normalizePlantName(plant.name);
+  let variety = state.varieties.find((v) => normalizePlantName(v.name) === normalized);
+  if (!variety) {
+    variety = await api('/varieties', {
+      method: 'POST',
+      body: JSON.stringify({ name: plant.name, color: CATEGORY_COLOR[plant.category] ?? '#6b9c42' }),
+    });
+  }
+
+  await api(`/cells/${cell.id}/planting`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      varietyId: variety.id,
+      sownOn: $('f-sown').value || today(),
+      status: $('f-status').value || 'seme',
+      note: $('f-note').value,
+    }),
+  });
+
+  state.pickingForCellId = null;
+  closeSheet('guide-sheet');
+  await load();
+  openCellSheet(cellById(cell.id));
+  toast(`${cellLabel(cell)} → ${plant.name}`);
+});
+
+const CATEGORY_COLOR = {
+  Feuille: '#6b9c42',
+  Chou: '#4f8a3a',
+  Aromate: '#3fa79a',
+  Fruit: '#c1440e',
+  Racine: '#d9a441',
+  Bulbe: '#8a5fbd',
+  Légumineuse: '#8ab33f',
+  Cucurbitacée: '#d9c441',
+};
 
 const renderHistory = run(async (cell) => {
   const box = $('history');
@@ -1344,6 +1554,9 @@ function closeSheet(id) {
     state.selectedCellId = null;
     renderPlan();
   }
+  if (id === 'guide-sheet') {
+    state.pickingForCellId = null;
+  }
   if (!document.querySelector('.sheet:not([hidden])')) document.body.style.overflow = '';
 }
 
@@ -1421,19 +1634,57 @@ $('btn-tray-menu').addEventListener('click', () => {
   openSheet('tray-sheet');
 });
 
+$('btn-guide').addEventListener(
+  'click',
+  run(async () => {
+    state.pickingForCellId = null;
+    await loadPlants();
+    $('guide-search').value = '';
+    renderGuide();
+    openSheet('guide-sheet');
+  }),
+);
+
+$('btn-pick-plant').addEventListener(
+  'click',
+  run(async () => {
+    state.pickingForCellId = state.selectedCellId;
+    await loadPlants();
+    $('guide-search').value = '';
+    renderGuide();
+    openSheet('guide-sheet');
+  }),
+);
+
+$('guide-search').addEventListener('input', renderGuide);
+
+$('guide-list').addEventListener('click', (event) => {
+  const favBtn = event.target.closest('[data-fav-key]');
+  if (favBtn) {
+    toggleFavorite(favBtn.dataset.favKey);
+    return;
+  }
+  const chooseBtn = event.target.closest('.guide__choose');
+  if (chooseBtn) choosePlantForCell(chooseBtn.dataset.key);
+});
+
 $('quickfill-stop').addEventListener('click', () => {
   state.quickfillVarietyId = null;
   renderQuickfill();
   renderPlan();
 });
 
-$('f-sown').addEventListener('change', updateAge);
+$('f-sown').addEventListener('change', () => {
+  updateAge();
+  renderPlantInfo();
+});
 
 $('f-variety').addEventListener('change', () => {
   if ($('f-variety').value && !$('f-sown').value) {
     $('f-sown').value = today();
     updateAge();
   }
+  renderPlantInfo();
 });
 
 $('cell-form').addEventListener(
@@ -1579,3 +1830,6 @@ applyTheme(document.documentElement.dataset.theme ?? 'system');
 /* ---------------------------------------------------------------- démarrage */
 
 run(load)();
+// Chargee en arriere-plan, sans bloquer l'affichage du plan : la fiche
+// technique d'un pot reste simplement vide tant que ce n'est pas fini.
+run(loadPlants)();

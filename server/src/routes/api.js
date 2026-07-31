@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import { query, withTransaction } from '../db/pool.js';
 import { buildGrid, buildTower, DEFAULT_TRAY, HOLE_RADIUS, HOLES } from '../db/layout.js';
+import { PLANTS } from '../db/plants.js';
 
 export const api = Router();
 
@@ -135,6 +136,48 @@ api.get(
     const trayId = req.query.tray ? Number.parseInt(req.query.tray, 10) : null;
     const [state, varieties] = await Promise.all([loadTrayState(trayId), loadVarieties()]);
     res.json({ ...state, varieties, holeRadius: HOLE_RADIUS, statuses: STATUSES, outcomes: OUTCOMES });
+  }),
+);
+
+/**
+ * Base de référence des légumes/aromates : statique, écrite dans le code
+ * (server/src/db/plants.js), aucun appel réseau ni dépendance à un service
+ * externe — l'app reste utilisable hors ligne. Seul le statut "favori" est
+ * une donnée utilisateur, stockée en base.
+ */
+api.get(
+  '/plants',
+  asyncRoute(async (_req, res) => {
+    const { rows } = await query('SELECT plant_key FROM plant_favorites');
+    const favorites = new Set(rows.map((r) => r.plant_key));
+    res.json(PLANTS.map((p) => ({ ...p, favorite: favorites.has(p.key) })));
+  }),
+);
+
+function findPlant(key) {
+  const plant = PLANTS.find((p) => p.key === key);
+  if (!plant) throw notFound('Légume introuvable');
+  return plant;
+}
+
+api.put(
+  '/plants/:key/favorite',
+  asyncRoute(async (req, res) => {
+    findPlant(req.params.key);
+    await query(
+      'INSERT INTO plant_favorites (plant_key) VALUES ($1) ON CONFLICT DO NOTHING',
+      [req.params.key],
+    );
+    res.status(204).end();
+  }),
+);
+
+api.delete(
+  '/plants/:key/favorite',
+  asyncRoute(async (req, res) => {
+    findPlant(req.params.key);
+    await query('DELETE FROM plant_favorites WHERE plant_key = $1', [req.params.key]);
+    res.status(204).end();
   }),
 );
 

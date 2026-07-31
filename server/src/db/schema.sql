@@ -65,3 +65,10 @@ CREATE INDEX IF NOT EXISTS plantings_cell_idx ON plantings (cell_id);
 -- Un seul semis "en cours" par trou.
 CREATE UNIQUE INDEX IF NOT EXISTS plantings_one_current
   ON plantings (cell_id) WHERE ended_on IS NULL;
+
+-- Légumes/aromates marqués en favori dans le guide (server/src/db/plants.js,
+-- lui-même statique et non stocké en base). plant_key référence PLANTS[].key.
+CREATE TABLE IF NOT EXISTS plant_favorites (
+  plant_key  text PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now()
+);

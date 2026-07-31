@@ -45,6 +45,19 @@ Pensée pour être consultée et remplie depuis un smartphone, sur le réseau lo
   en sans-serif gras, sans fioriture — une première version avec police
   manuscrite, bordures perforées et éléments flottants en fond a été retirée
   après retour utilisateur (« ringard, années 90 »).
+- **Guide des légumes** : une base de référence de plus de 50 légumes/aromates,
+  intégrée à l'app (aucun appel réseau, aucune dépendance à un chatbot) —
+  adaptation à une tour hydroponique, lumière, pH/EC indicatifs et jours
+  jusqu'à maturité. Cherchable depuis le bouton **Guide** de la barre du haut,
+  et directement utilisable pour semer : dans la fiche d'un trou, la loupe 🔍
+  à côté du champ Variété ouvre le guide en mode sélection — choisir un légume
+  crée (ou retrouve) automatiquement la variété correspondante dans la
+  légende et l'assigne au trou. On peut marquer des légumes en **favori**
+  (étoile) pour les retrouver en tête de liste sans avoir à chercher à chaque
+  fois ; ce choix est mémorisé sur le serveur. Quand la variété d'un trou
+  correspond à une fiche du guide, celle-ci s'affiche automatiquement dans
+  la fiche du trou, avec une **estimation de la fenêtre de récolte** calculée
+  à partir de la date de semis.
 
 ## Installation sur le serveur Ubuntu
 
@@ -114,6 +127,26 @@ docker compose run --rm -e RESEED_LAYOUT=1 app node src/db/migrate.js && docker 
 Le re-seed conserve les semis en cours et l'historique des trous déjà existants ;
 seuls les trous supprimés du plan emportent leur historique.
 
+## Étoffer le guide des légumes
+
+Toute la base tient dans [`server/src/db/plants.js`](server/src/db/plants.js), dans
+le tableau `PLANTS` : une entrée par légume/variante, avec `aliases` (les noms sous
+lesquels une variété doit être reconnue, insensible aux accents/casse), la
+catégorie, l'adaptation à une tour (`adapted` / `limited` / `not_recommended`),
+lumière, pH/EC indicatifs et `daysMin`/`daysMax` (jours entre semis et première
+récolte). Ajouter une entrée ne demande aucune migration : redémarrer le
+conteneur `app` suffit (`docker compose restart app`).
+
+Elle couvre aujourd'hui les *types* les plus courants au sein d'un même légume
+(laitue Batavia / feuille de chêne / romaine…, tomate cerise / roma / naine /
+grosse…) plutôt que des noms commerciaux précis de sachets de graines : au-delà
+d'un certain niveau de détail, distinguer des cultivars exacts demanderait des
+chiffres que je ne peux pas garantir exacts pour une référence commerciale
+précise. Si une variété plus pointue te manque, ajoute-la directement dans le
+fichier (ou demande, en précisant son nom et si possible ses caractéristiques
+connues) — la correspondance par alias fera qu'elle sera reconnue dès que son
+nom se rapproche d'une entrée existante, même sans ajout.
+
 ## Sécurité
 
 L'application n'a **pas d'authentification** : n'importe qui pouvant joindre le port
@@ -165,6 +198,8 @@ rien : cela renseigne `ended_on` et `outcome`, ce qui constitue l'historique.
 | `PUT` | `/api/cells/:id/planting` | renseigner / modifier le semis d'un trou |
 | `POST` | `/api/cells/:id/clear` | clôturer le cycle (passe à l'historique) |
 | `GET` | `/api/cells/:id/history` | cycles terminés d'un trou |
+| `GET` | `/api/plants` | guide des légumes (statique + favoris de l'utilisateur) |
+| `PUT` `DELETE` | `/api/plants/:key/favorite` | marquer / retirer un favori |
 | `GET` | `/healthz` | sonde de vie |
 
 Supprimer une variété encore utilisée l'archive au lieu de l'effacer, pour ne pas

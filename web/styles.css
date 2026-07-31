@@ -664,6 +664,23 @@ main {
   letter-spacing: 0.03em;
 }
 
+.field-with-btn {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.field-with-btn select {
+  flex: 1;
+  min-width: 0;
+}
+
+.field-with-btn .btn--icon {
+  flex: none;
+  border: 1px solid var(--tray-edge);
+  border-radius: 10px;
+}
+
 .field-row {
   display: flex;
   gap: 10px;
@@ -831,6 +848,162 @@ input[type="color"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* --------------------------------------------------------- fiche technique */
+
+.plant-info {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plant-info__badge {
+  display: inline-block;
+  align-self: flex-start;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.plant-info__badge--adapted {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.plant-info__badge--limited {
+  background: color-mix(in srgb, var(--mustard) 30%, var(--surface-2));
+  color: color-mix(in srgb, var(--mustard) 65%, var(--text));
+}
+
+.plant-info__badge--not_recommended {
+  background: color-mix(in srgb, var(--danger) 18%, var(--surface-2));
+  color: var(--danger);
+}
+
+.plant-info__row {
+  color: var(--text);
+}
+
+.plant-info__row b {
+  color: var(--muted);
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.plant-info__tip {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.plant-info__disclaimer {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* -------------------------------------------------------- guide des légumes */
+
+#guide-search {
+  margin-bottom: 10px;
+}
+
+.guide {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guide__item {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.guide__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.guide__name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.guide__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.guide__tip {
+  margin: 6px 0 0;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.guide__empty {
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.guide__section {
+  list-style: none;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 4px 2px;
+  margin-top: 4px;
+}
+
+.guide__star {
+  flex: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--border);
+  cursor: pointer;
+}
+
+.guide__star--on {
+  color: var(--mustard);
+}
+
+.guide__choose {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.guide__picking {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin: 0 0 10px;
 }
 
 /* --------------------------------------------------------------- historique */
